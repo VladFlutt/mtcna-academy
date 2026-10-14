@@ -1,3 +1,4 @@
+import { T } from './i18n.js'
 // Minimal Markdown renderer for the lesson files (headings, paragraphs,
 // lists, tables, blockquotes, indented code, bold, italic, inline code).
 
@@ -24,7 +25,7 @@ export function renderMarkdown(src) {
     if (/^ {4}/.test(l)) {
       const buf = []
       while (i < lines.length && (/^ {4}/.test(lines[i]) || (!lines[i].trim() && /^ {4}/.test(lines[i + 1] || '')))) { buf.push(lines[i].slice(4)); i++ }
-      out.push(`<pre class="code"><code>${esc(buf.join('\n'))}</code><button class="copy" title="Copy">Copy</button></pre>`)
+      out.push(`<pre class="code"><code>${esc(buf.join('\n'))}</code><button class="copy" title="${T('Copy', 'Копировать')}">${T('Copy', 'Копировать')}</button></pre>`)
       continue
     }
     const h = l.match(/^(#{1,4})\s+(.*)/)

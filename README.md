@@ -8,7 +8,9 @@ Interactive training platform for the MikroTik Certified Network Associate (MTCN
 - **Quizzes:** 143 questions with explanations, 80% to pass each module.
 - **Final exam:** 25 random questions, 60 minutes, 60% to pass (same format as the real MTCNA exam).
 
-Progress is saved in the browser (localStorage).
+The whole course is available in **English and Russian** (EN/RU switch in the header). Progress is saved in the browser (localStorage).
+
+Весь курс доступен на **английском и русском** (переключатель EN/RU в шапке).
 
 ## Run locally
 
