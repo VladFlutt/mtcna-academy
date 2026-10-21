@@ -6,6 +6,7 @@ import { RouterOS, defaultConfig, laptopState, laptopInternet, routerInternet } 
 import { LANG, T } from './i18n.js'
 import { MODULES_RU } from './data.ru.js'
 import { LABS_RU } from './labs.ru.js'
+import { explainError, auditConfig, auditScore, askTutor, makeTroubleshoot, troubleshootSolved, studyPlan, readiness } from './ai.js'
 
 // ---------- translation overlay ----------
 if (LANG === 'ru') {
@@ -78,7 +79,7 @@ function moduleProgress(mod, count) {
 
 // ---------- layout ----------
 function shell(active, inner) {
-  const nav = [['#/', T('Course', 'Курс'), 'home'], ['#/labs', T('Labs', 'Лабы'), 'labs'], ['#/terminal', T('Terminal', 'Терминал'), 'terminal'], ['#/sims', T('Simulators', 'Симуляторы'), 'sims'], ['#/exam', T('Final exam', 'Экзамен'), 'exam'], ['#/cheatsheet', T('Cheat sheet', 'Шпаргалка'), 'cheat']]
+  const nav = [['#/', T('Course', 'Курс'), 'home'], ['#/labs', T('Labs', 'Лабы'), 'labs'], ['#/terminal', T('Terminal', 'Терминал'), 'terminal'], ['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble'], ['#/sims', T('Simulators', 'Симуляторы'), 'sims'], ['#/exam', T('Final exam', 'Экзамен'), 'exam'], ['#/cheatsheet', T('Cheat sheet', 'Шпаргалка'), 'cheat']]
   return `
   <header class="top">
     <a href="#/" class="brand"><span class="logo">M</span><span>MTCNA <b>Academy</b></span></a>
@@ -91,6 +92,74 @@ function shell(active, inner) {
 }
 
 // ---------- pages ----------
+function readinessHtml(rd) {
+  const p = rd.parts
+  return `<div class="ready"><div class="ready-ring" style="--p:${rd.score}"><b>${rd.score}</b><span>/100</span></div><div><b>${T('Exam readiness', 'Готовность к экзамену')}</b><p>${esc(rd.verdict)}</p>
+    <p class="muted sm">${T('Quizzes', 'Тесты')} ${p.quiz}% · ${T('labs', 'лабы')} ${p.labs}% · ${T('lessons', 'уроки')} ${p.read}%${p.exam !== null ? ` · ${T('last exams', 'последние экзамены')} ${p.exam}%` : ''}</p>
+    ${rd.weak.length && rd.score > 0 ? `<p class="sm">${T('Weakest', 'Слабее всего')}: ${rd.weak.map((w) => `<a href="#/module/${w.m.id}">${esc(w.m.title)}</a>`).join(', ')}</p>` : ''}</div></div>`
+}
+function aiHomeCard(counts) {
+  const plan = studyPlan(MODULES, LABS, store.data, counts)
+  const rd = readiness(MODULES, LABS, store.data, counts)
+  return `<section class="card ai-home"><div><h2>🤖 ${T('Your next steps', 'Ваши следующие шаги')}</h2><p class="muted sm">${T('The study plan adapts to your lessons, quiz scores, labs and exam results in this browser.', 'План подстраивается под ваши уроки, результаты тестов, лабы и экзамены в этом браузере.')}</p>
+    <ol class="plan">${plan.steps.map((x) => `<li><a href="${x.href}">${x.icon} ${esc(x.text)}</a><span class="muted sm">${esc(x.why)}</span></li>`).join('')}</ol></div>${readinessHtml(rd)}</section>`
+}
+async function lessonCounts() { return Promise.all(MODULES.map((m) => lessons(m).then((l) => l.length).catch(() => 0))) }
+
+function troublePage() {
+  const level = Math.min(3, Math.max(1, Number(sessionStorage.getItem('ts-level')) || 1))
+  const html = shell('trouble', `
+  <h1>🛠️ ${T('Troubleshooting lab', 'Поиск неисправностей')}</h1>
+  <p class="lead">${T('The AI lab generator breaks a working office network in a random way. The laptop has no Internet; find the cause with print, ping and the tutor, and fix it without resetting the router. Every new lab is different.', 'Генератор лаб ломает рабочую офисную сеть случайным образом. У ноутбука нет Интернета: найдите причину через print, ping и тьютора и исправьте её без сброса маршрутизатора. Каждая новая лаба отличается.')}</p>
+  <div class="row wrap ts-bar"><span>${T('Difficulty', 'Сложность')}:</span>${[1, 2, 3].map((n) => `<button class="chip ${n === level ? 'on' : ''}" data-lv="${n}">${n} ${T(n > 1 ? 'faults' : 'fault', n === 1 ? 'поломка' : 'поломки')}</button>`).join('')}<button class="btn sm" id="ts-new">${T('Generate a new fault', 'Сгенерировать новую поломку')}</button></div>
+  <div class="lab">
+    <section class="lab-main"><div id="term"></div></section>
+    <aside class="lab-side card">
+      <h3>${T('Task', 'Задание')} <span id="lab-count" class="score"></span></h3>
+      <ol class="tasks" id="tasks"></ol>
+      <div id="lp"></div>
+      ${tutorPanel()}
+      <div class="row wrap"><button class="btn ghost" id="ts-hint">${T('Hint', 'Подсказка')}</button><button class="btn ghost" id="ts-give">${T('Show the cause', 'Показать причину')}</button></div>
+      <div id="ts-info"></div>
+    </aside>
+  </div>`)
+  return { html, after: () => {
+    let ros, t, gen, hints, solvedShown
+    const start = () => {
+      gen = makeTroubleshoot((Date.now() ^ (Math.random() * 1e9)) >>> 0, level)
+      ros = new RouterOS(gen.st); hints = 0; solvedShown = false
+      t = mountTerminal(document.getElementById('term'), ros, upd)
+      document.getElementById('ts-info').innerHTML = ''
+      upd(); t.focus()
+    }
+    const upd = () => {
+      const ok = troubleshootSolved(ros.st)
+      document.getElementById('lab-count').textContent = ok ? '1/1' : '0/1'
+      document.getElementById('lab-count').className = 'score' + (ok ? ' good' : '')
+      document.getElementById('tasks').innerHTML = `<li class="${ok ? 'done' : ''}"><span class="tick">${ok ? '✓' : 1}</span><div>${T(`Bring the laptop back online (${gen.faults.length} fault${gen.faults.length > 1 ? 's' : ''} hidden). Keep bridgeLAN and the default route; no reset.`, `Верните ноутбуку Интернет (спрятано поломок: ${gen.faults.length}). Сохраните bridgeLAN и маршрут по умолчанию, без сброса.`)}</div></li>`
+      document.getElementById('lp').innerHTML = laptopPanel(ros.st)
+      if (ok && !solvedShown) {
+        solvedShown = true
+        store.data.trouble = (store.data.trouble || 0) + 1; store.save()
+        t.write(T('\n*** Fixed! The laptop is online again. ***\n', '\n*** Исправлено! Ноутбук снова в сети. ***\n'), 'good')
+        reveal(true)
+      }
+    }
+    const reveal = (won) => { document.getElementById('ts-info').innerHTML = `<div class="ts-cause ${won ? 'good' : ''}"><b>${won ? T('What was broken', 'Что было сломано') : T('The cause', 'Причина')}</b><ul>${gen.faults.map((f) => `<li>${esc(f.explain())}</li>`).join('')}</ul></div>` }
+    document.getElementById('ts-hint').onclick = () => {
+      const f = gen.faults[Math.min(hints, gen.faults.length - 1)]
+      hints++
+      document.getElementById('ts-info').innerHTML = `<div class="ts-cause"><b>${T('Hint', 'Подсказка')} ${hints}</b><p>${esc(f.hint())}</p><pre class="code sm"><code>${esc(f.diag)}</code><button class="copy">${T('Copy', 'Копировать')}</button></pre></div>`
+      bindCopy(document.getElementById('ts-info'))
+    }
+    document.getElementById('ts-give').onclick = () => reveal(false)
+    document.getElementById('ts-new').onclick = start
+    document.querySelector('.ts-bar').addEventListener('click', (e) => { const lv = e.target.dataset.lv; if (lv) { sessionStorage.setItem('ts-level', lv); route() } })
+    start()
+    bindTutor(document.querySelector('.ai'), () => ({ st: ros.st, lastError: t.lastError }))
+  } }
+}
+
 async function homePage() {
   const counts = await Promise.all(MODULES.map((m) => lessons(m).then((l) => l.length).catch(() => 0)))
   const totalLessons = counts.reduce((a, b) => a + b, 0)
@@ -119,6 +188,7 @@ async function homePage() {
       <div><b>${bestExam ? bestExam + '%' : '–'}</b><span>${T('best exam', 'лучший экзамен')}</span></div>
     </div>
   </section>
+  ${aiHomeCard(counts)}
   <h2 class="sec">${T('Modules', 'Модули')}</h2>
   <div class="mods">${cards}</div>
   <section class="card how">
@@ -225,10 +295,17 @@ function mountTerminal(el, ros, onChange) {
   const setPrompt = () => { prompt.textContent = ros.prompt() }
   ros.onReset = () => { out.textContent = ''; banner(); setPrompt(); onChange && onChange() }
   banner(); setPrompt()
+  const api = { lastError: '' }
   const runLine = (line) => {
     write(ros.prompt() + line, 'cmd')
     const res = ros.exec(line)
-    if (res) write(res, /^(bad command|expected end|failure|input does not|invalid value|no such)/.test(res) ? 'err' : '')
+    const isErr = res && /^(bad command|expected end|failure|input does not|invalid value|no such)/.test(res)
+    if (res) write(res, isErr ? 'err' : '')
+    if (isErr) {
+      api.lastError = line + '\n' + res
+      const hint = explainError(ros, line, res)
+      if (hint) write('🤖 ' + hint, 'tutor')
+    }
     setPrompt()
     onChange && onChange()
   }
@@ -248,7 +325,7 @@ function mountTerminal(el, ros, onChange) {
     else if (e.key === 'k' && e.ctrlKey) { input.value = input.value.slice(0, input.selectionStart); e.preventDefault() }
   })
   el.querySelector('.term').addEventListener('click', () => { if (!window.getSelection().toString()) input.focus() })
-  return { runLine, focus: () => input.focus(), write }
+  return Object.assign(api, { runLine, focus: () => input.focus(), write })
 }
 
 function laptopPanel(st) {
@@ -261,6 +338,43 @@ function laptopPanel(st) {
     ${!inet.ok ? `<p class="why">${T('Why', 'Причина')}: ${esc(trReason(inet.reason || L.why || ''))}</p>` : ''}</div>`
 }
 
+// ---------- AI tutor panel ----------
+// ctx() returns { st, lab, lastError } for the current terminal
+function tutorPanel() {
+  return `<div class="ai card-in"><h4>🤖 ${T('AI tutor', 'ИИ-тьютор')}</h4>
+    <div class="row wrap"><button class="btn ghost sm" data-ai="audit">${T('Audit my config', 'Аудит конфигурации')}</button><button class="btn ghost sm" data-ai="why">${T('Why no Internet?', 'Почему нет Интернета?')}</button></div>
+    <form class="ai-ask"><input name="q" maxlength="1000" placeholder="${T('Ask about RouterOS or your config', 'Вопрос о RouterOS или вашей конфигурации')}" aria-label="${T('Question for the AI tutor', 'Вопрос ИИ-тьютору')}"><button class="btn sm">${T('Ask', 'Спросить')}</button></form>
+    <div class="ai-out" aria-live="polite"></div></div>`
+}
+const fences = (t) => String(t).replace(/```[\w-]*\n([\s\S]*?)```/g, (_, c) => '\n' + c.replace(/\n$/, '').split('\n').map((l) => '    ' + l).join('\n') + '\n')
+const cmdBlocks = (t) => String(t).split('\n').map((l) => /^\/[a-z]/.test(l) ? '    ' + l : l).join('\n').replace(/\n( {4}\/)/g, '\n\n$1')
+function bindTutor(el, ctx) {
+  const out = el.querySelector('.ai-out')
+  const show = (html) => { out.innerHTML = html; bindCopy(out) }
+  el.querySelector('[data-ai="audit"]').onclick = () => {
+    const f = auditConfig(ctx().st)
+    const sc = auditScore(f)
+    const lab = { high: T('high', 'высокий'), med: T('medium', 'средний'), low: T('low', 'низкий') }
+    show(`<div class="audit-head"><b class="${sc >= 80 ? 'good' : sc >= 50 ? '' : 'bad'}">${sc}/100</b><span>${f.length ? T(`${f.length} finding(s), most important first`, `Замечаний: ${f.length}, сначала важные`) : T('No issues found. Nice work.', 'Замечаний нет. Отличная работа.')}</span></div>` +
+      f.map((x) => `<details class="finding ${x.sev}"><summary><span class="sev">${lab[x.sev]}</span> ${esc(x.title)}</summary><p>${esc(trReason(x.why))}</p>${x.fix ? `<pre class="code sm"><code>${esc(x.fix)}</code><button class="copy">${T('Copy', 'Копировать')}</button></pre>` : ''}</details>`).join(''))
+  }
+  el.querySelector('[data-ai="why"]').onclick = () => ask(T('Why does the laptop have no Internet? Give me a hint, not the full answer.', 'Почему у ноутбука нет Интернета? Дай подсказку, а не готовый ответ.'))
+  el.querySelector('.ai-ask').onsubmit = (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) { ask(q); e.target.q.value = '' } }
+  const ask = async (q) => {
+    show(`<p class="ai-q">${esc(q)}</p><p class="muted">${T('Thinking…', 'Думаю…')}</p>`)
+    const c = ctx()
+    const r = await askTutor(q, c)
+    const body = r.source === 'claude' ? fences(r.text) : cmdBlocks(trReason(r.text))
+    show(`<p class="ai-q">${esc(q)}</p><div class="ai-a">${renderMarkdown(body)}</div><p class="ai-src">${r.source === 'claude' ? T('Answer by Claude, based on your current config. Check it in the terminal.', 'Ответ Claude на основе вашей текущей конфигурации. Проверьте его в терминале.') : T('Built-in tutor (offline rules). The Claude tutor answers when the site has an API key configured.', 'Встроенный тьютор (правила, без сети). Claude отвечает, когда на сайте настроен ключ API.')}</p>`)
+  }
+}
+function bindCopy(scope) {
+  scope.querySelectorAll('pre.code .copy').forEach((b) => b.onclick = () => {
+    const txt = b.parentElement.querySelector('code').textContent
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = T('Copied', 'Скопировано'); setTimeout(() => b.textContent = T('Copy', 'Копировать'), 1200) }).catch(() => {})
+  })
+}
+
 function terminalPage() {
   const html = shell('terminal', `
   <div class="lab">
@@ -269,6 +383,7 @@ function terminalPage() {
       <h3>${T('Free practice', 'Свободная практика')}</h3>
       <p class="muted">${T('A hAP-style router with the MikroTik <b>default configuration</b>. ether1 is cabled to the ISP (DHCP, PPPoE user class/class, gateway 22.1.1.1), ether2 to a laptop.', 'Маршрутизатор типа hAP с <b>конфигурацией MikroTik по умолчанию</b>. ether1 подключён к провайдеру (DHCP, PPPoE пользователь class/class, шлюз 22.1.1.1), ether2 к ноутбуку.')}</p>
       <div id="lp"></div>
+      ${tutorPanel()}
       <h4>${T('Try', 'Попробуйте')}</h4>
       <div class="tries">${['/interface print', '/ip address print', '/ip route print', '/ip firewall filter print', '/ping mikrotik.com count=3', '/system reset-configuration no-defaults=yes', '/export'].map((c) => `<button class="chip mono" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
       <button class="btn ghost" id="t-reset">${T('Reset to default config', 'Сбросить к конфигурации по умолчанию')}</button>
@@ -281,6 +396,7 @@ function terminalPage() {
     upd(); t.focus()
     document.querySelector('.tries').onclick = (e) => { if (e.target.dataset.c) { t.runLine(e.target.dataset.c); t.focus() } }
     document.getElementById('t-reset').onclick = () => { ros = new RouterOS(defaultConfig()); t = mountTerminal(document.getElementById('term'), ros, upd); upd(); t.focus() }
+    bindTutor(document.querySelector('.ai'), () => ({ st: ros.st, lastError: t.lastError }))
   } }
 }
 
@@ -311,6 +427,7 @@ function labPage(id) {
       <h3>${T('Tasks', 'Задания')} <span id="lab-count" class="score"></span></h3>
       <ol class="tasks" id="tasks"></ol>
       <div id="lp"></div>
+      ${tutorPanel()}
       <div class="row wrap"><button class="btn ghost" id="l-reset">${T('Restart lab', 'Начать заново')}</button><button class="btn ghost" id="l-sol">${T('Show all hints', 'Показать все подсказки')}</button></div>
     </aside>
   </div>`)
@@ -331,6 +448,7 @@ function labPage(id) {
     document.getElementById('tasks').onclick = (e) => { const h = e.target.dataset.h; if (h !== undefined) { open.has(+h) ? open.delete(+h) : open.add(+h); upd() } }
     document.getElementById('l-sol').onclick = () => { lab.tasks.forEach((_, i) => open.add(i)); upd() }
     document.getElementById('l-reset').onclick = () => { ros = new RouterOS(makeLabState(lab)); t = mountTerminal(document.getElementById('term'), ros, upd); upd(); t.focus() }
+    bindTutor(document.querySelector('.ai'), () => ({ st: ros.st, lab: { ...lab, done: labProgress(lab, ros.st) }, lastError: t.lastError }))
   } }
 }
 
@@ -347,7 +465,8 @@ function simPage(id) {
 
 // ---------- exam ----------
 let examTimer = null
-function examPage() {
+async function examPage() {
+  const rd = readiness(MODULES, LABS, store.data, await lessonCounts())
   const hist = store.data.exams.slice(-5).reverse()
   const html = shell('exam', `<div id="exam"><h1>${T('Final exam', 'Финальный экзамен')}</h1>
     <div class="card exam-intro">
@@ -356,6 +475,7 @@ function examPage() {
       <ul><li>Можно переходить между вопросами и менять ответы до отправки.</li><li>Когда время закончится, экзамен отправится сам.</li><li>После отправки вы увидите все ответы с объяснениями и результат по каждому модулю.</li><li>Совет: переключите язык на EN, чтобы потренироваться на английских формулировках, как на настоящем экзамене.</li></ul>`)}
       <button class="btn" id="start">${T('Start the exam', 'Начать экзамен')}</button>
     </div>
+    <div class="card">${readinessHtml(rd)}</div>
     ${hist.length ? `<h3>${T('Previous attempts', 'Предыдущие попытки')}</h3><div class="table-wrap"><table><thead><tr><th>${T('Date', 'Дата')}</th><th>${T('Score', 'Результат')}</th><th>${T('Result', 'Итог')}</th><th>${T('Time', 'Время')}</th></tr></thead><tbody>${hist.map((h) => `<tr><td>${new Date(h.date).toLocaleString()}</td><td>${h.score}%</td><td class="${h.pass ? 'good' : 'bad'}">${h.pass ? T('Passed', 'Сдан') : T('Failed', 'Не сдан')}</td><td>${Math.round(h.secs / 60)} ${T('min', 'мин')}</td></tr>`).join('')}</tbody></table></div>` : ''}
   </div>`)
   return { html, after: () => { document.getElementById('start').onclick = () => startExam(document.getElementById('exam')) } }
@@ -398,6 +518,7 @@ function startExam(el) {
     const secs = Math.round((Date.now() - t0) / 1000)
     store.data.exams.push({ date: Date.now(), score, pass, secs }); store.save()
     const perMod = MODULES.map((m) => { const idx = qs.map((q, i) => q.mod === m.id ? i : -1).filter((i) => i >= 0); return { m, n: idx.length, ok: idx.filter((i) => right[i]).length } }).filter((x) => x.n)
+    store.data.examMods = Object.fromEntries(perMod.map((x) => [x.m.id, { ok: x.ok, n: x.n }])); store.save()
     el.innerHTML = `<h1>${T('Exam result', 'Результат экзамена')}</h1>
       <div class="card result-card ${pass ? 'pass' : 'fail'}"><div class="big-score">${score}%</div><div><b>${pass ? T('Passed', 'Сдан') : T('Not passed', 'Не сдан')}</b>${timeout ? T(' (time ran out)', ' (время вышло)') : ''}<br>${T(`${right.filter(Boolean).length} of ${qs.length} correct in ${Math.floor(secs / 60)} min ${secs % 60} s. Pass mark ${EXAM.pass}%.`, `Верно ${right.filter(Boolean).length} из ${qs.length} за ${Math.floor(secs / 60)} мин ${secs % 60} с. Проходной балл ${EXAM.pass}%.`)}</div></div>
       <h3>${T('By module', 'По модулям')}</h3><div class="permod">${perMod.map((x) => `<a href="#/module/${x.m.id}" class="pm"><span>${x.m.icon} ${esc(x.m.title)}</span><b class="${x.ok / x.n >= 0.6 ? 'good' : 'bad'}">${x.ok}/${x.n}</b></a>`).join('')}</div>
@@ -453,7 +574,8 @@ async function route() {
   else if (parts[0] === 'terminal') page = terminalPage()
   else if (parts[0] === 'sims') page = simsPage()
   else if (parts[0] === 'sim') page = simPage(parts[1])
-  else if (parts[0] === 'exam') page = examPage()
+  else if (parts[0] === 'exam') page = await examPage()
+  else if (parts[0] === 'troubleshoot') page = troublePage()
   else if (parts[0] === 'cheatsheet') page = cheatPage()
   else page = notFound()
   const { html, after } = typeof page === 'string' ? { html: page } : page
@@ -479,10 +601,7 @@ function bindCommon() {
   }
   const rp = document.getElementById('reset-progress')
   if (rp) rp.onclick = () => { if (confirm(T('Delete all progress, quiz scores and exam history in this browser?', 'Удалить весь прогресс, результаты тестов и историю экзаменов в этом браузере?'))) { store.data = { lessons: {}, quiz: {}, labs: {}, exams: [], theme: store.data.theme, lang: store.data.lang }; store.save(); route() } }
-  root.querySelectorAll('pre.code .copy').forEach((b) => b.onclick = () => {
-    const txt = b.parentElement.querySelector('code').textContent
-    navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = T('Copied', 'Скопировано'); setTimeout(() => b.textContent = T('Copy', 'Копировать'), 1200) }).catch(() => {})
-  })
+  bindCopy(root)
 }
 
 window.addEventListener('hashchange', route)
