@@ -7,6 +7,11 @@ import { LANG, T } from './i18n.js'
 import { MODULES_RU } from './data.ru.js'
 import { LABS_RU } from './labs.ru.js'
 import { explainError, auditConfig, auditScore, askTutor, makeTroubleshoot, troubleshootSolved, studyPlan, readiness } from './ai.js'
+import { COURSES } from './courses.js'
+import { GLOSSARY, CATS } from './glossary.js'
+import { initTerms } from './terms.js'
+
+const APP = T('Academy MikroTik', 'Академия MikroTik')
 
 // ---------- translation overlay ----------
 if (LANG === 'ru') {
@@ -78,17 +83,22 @@ function moduleProgress(mod, count) {
 }
 
 // ---------- layout ----------
+const COURSE_KEYS = ['home', 'labs', 'terminal', 'trouble', 'sims', 'exam', 'cheat']
 function shell(active, inner) {
-  const nav = [['#/', T('Course', 'Курс'), 'home'], ['#/labs', T('Labs', 'Лабы'), 'labs'], ['#/terminal', T('Terminal', 'Терминал'), 'terminal'], ['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble'], ['#/sims', T('Simulators', 'Симуляторы'), 'sims'], ['#/exam', T('Final exam', 'Экзамен'), 'exam'], ['#/cheatsheet', T('Cheat sheet', 'Шпаргалка'), 'cheat']]
+  const inCourse = COURSE_KEYS.includes(active)
+  const top = [['#/', T('Courses', 'Курсы'), active === 'academy' || active === 'course'], ['#/mtcna', 'MTCNA', inCourse], ['#/glossary', T('Glossary', 'Словарь'), active === 'glossary']]
+  const sub = [['#/mtcna', T('Course', 'Курс'), 'home'], ['#/labs', T('Labs', 'Лабы'), 'labs'], ['#/terminal', T('Terminal', 'Терминал'), 'terminal'], ['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble'], ['#/sims', T('Simulators', 'Симуляторы'), 'sims'], ['#/exam', T('Final exam', 'Экзамен'), 'exam'], ['#/cheatsheet', T('Cheat sheet', 'Шпаргалка'), 'cheat']]
+  document.title = inCourse ? `MTCNA · ${APP}` : active === 'glossary' ? `${T('Glossary', 'Словарь')} · ${APP}` : APP
   return `
   <header class="top">
-    <a href="#/" class="brand"><span class="logo">M</span><span>MTCNA <b>Academy</b></span></a>
-    <nav>${nav.map(([h, t, k]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${t}</a>`).join('')}</nav>
+    <a href="#/" class="brand"><span class="logo">M</span><span>${T('Academy <b>MikroTik</b>', 'Академия <b>MikroTik</b>')}</span></a>
+    <nav>${top.map(([h, t, on]) => `<a href="${h}" class="${on ? 'on' : ''}">${t}</a>`).join('')}</nav>
     <button class="theme lang" id="lang" title="${T('Русский язык', 'English language')}" aria-label="${T('Switch to Russian', 'Switch to English')}">${T('RU', 'EN')}</button>
     <button class="theme" id="theme" title="${T('Toggle dark mode', 'Тёмная тема')}" aria-label="${T('Toggle dark mode', 'Тёмная тема')}">◐</button>
   </header>
+  ${inCourse ? `<div class="subnav"><span class="subnav-code">MTCNA</span><nav>${sub.map(([h, t, k]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${t}</a>`).join('')}</nav></div>` : ''}
   <main class="wrap">${inner}</main>
-  <footer class="foot">${T('Independent study platform for the MikroTik Certified Network Associate (MTCNA) course. Based on the course slides and the official documentation at help.mikrotik.com. Not affiliated with or endorsed by MikroTik. Progress is stored in this browser only.', 'Независимая учебная платформа по курсу MikroTik Certified Network Associate (MTCNA). Основана на слайдах курса и официальной документации help.mikrotik.com. Не связана с MikroTik и не одобрена ею. Прогресс хранится только в этом браузере.')}</footer>`
+  <footer class="foot">${T('Independent study platform for MikroTik certification courses. Based on the course slides and the official documentation at help.mikrotik.com. Not affiliated with or endorsed by MikroTik. Progress is stored in this browser only.', 'Независимая учебная платформа по курсам сертификации MikroTik. Основана на слайдах курсов и официальной документации help.mikrotik.com. Не связана с MikroTik и не одобрена ею. Прогресс хранится только в этом браузере.')}</footer>`
 }
 
 // ---------- pages ----------
@@ -160,6 +170,90 @@ function troublePage() {
   } }
 }
 
+// ---------- academy ----------
+async function academyPage() {
+  const counts = await lessonCounts()
+  const total = counts.reduce((a, b) => a + b, 0)
+  const pct = Math.round(MODULES.reduce((a, m, i) => a + moduleProgress(m, counts[i]), 0) / MODULES.length)
+  const bestExam = Math.max(0, ...store.data.exams.map((e) => e.score))
+  const cards = COURSES.map((c) => c.ready
+    ? `<a class="mod" href="${c.href}"><div class="mod-top"><span class="num">${c.code}</span><span class="ico">${c.icon}</span></div>
+        <h3>${esc(c.name)}</h3><p>${esc(c.desc)}</p>
+        <div class="meta"><span>${MODULES.length} ${T('modules', 'модулей')}</span><span>${total} ${T('lessons', 'уроков')}</span><span>${LABS.length} ${T('labs', 'лаб')}</span><span>${T('final exam', 'экзамен')}</span></div>
+        <div class="prog" title="${pct}%"><div style="width:${pct}%"></div></div></a>`
+    : `<a class="mod soon" href="#/course/${c.id}"><div class="mod-top"><span class="num">${c.code}</span><span class="ico">${c.icon}</span></div>
+        <h3>${esc(c.name)}</h3><p>${esc(c.desc)}</p><div class="meta"><span class="tag soon-tag">${T('Coming soon', 'Скоро')}</span></div></a>`).join('')
+  return shell('academy', `
+  <section class="hero">
+    <div>
+      <h1>${APP}</h1>
+      <p>${T('Learn MikroTik and RouterOS step by step, course by course. Each course has theory, a RouterOS terminal with guided labs, simulators, quizzes and a final exam. Start with MTCNA, the base for every other MikroTik certification.', 'Изучайте MikroTik и RouterOS шаг за шагом, курс за курсом. В каждом курсе теория, терминал RouterOS с лабораторными работами, симуляторы, тесты и финальный экзамен. Начните с MTCNA, это основа для всех остальных сертификаций MikroTik.')}</p>
+      <div class="row wrap"><a class="btn" href="#/mtcna">${pct ? T('Continue MTCNA', 'Продолжить MTCNA') : T('Start MTCNA', 'Начать MTCNA')}</a><a class="btn ghost" href="#/glossary">${T('Open the glossary', 'Открыть словарь')}</a></div>
+    </div>
+    <div class="stats">
+      <div><b>${pct}%</b><span>${T('of MTCNA done', 'MTCNA пройдено')}</span></div>
+      <div><b>${bestExam ? bestExam + '%' : '–'}</b><span>${T('best MTCNA exam', 'лучший экзамен MTCNA')}</span></div>
+      <div><b>${GLOSSARY.length}</b><span>${T('terms in the glossary', 'терминов в словаре')}</span></div>
+    </div>
+  </section>
+  <h2 class="sec">${T('Courses', 'Курсы')}</h2>
+  <div class="mods">${cards}</div>
+  <a class="card gl-promo" href="#/glossary"><span class="ico">📖</span><div><b>${T('Glossary', 'Словарь')}</b><p class="muted">${T(`${GLOSSARY.length} networking and RouterOS terms with short explanations. In lessons, click any highlighted term or abbreviation to see what it means.`, `${GLOSSARY.length} терминов из сетей и RouterOS с короткими объяснениями. В уроках нажмите на любой выделенный термин или аббревиатуру, чтобы увидеть, что он означает.`)}</p></div></a>`)
+}
+
+function coursePage(id) {
+  const c = COURSES.find((x) => x.id === id)
+  if (!c) return notFound()
+  return shell('course', `<div class="crumb"><a href="#/">${T('Courses', 'Курсы')}</a> · ${c.code}</div>
+  <section class="card soon-card">
+    <div class="soon-ico">${c.icon}</div>
+    <span class="tag soon-tag">${T('Coming soon', 'Скоро')}</span>
+    <h1>${c.code}: ${esc(c.name)}</h1>
+    <p class="lead">${esc(c.desc)}</p>
+    <h3>${T('Planned topics', 'Что будет в курсе')}</h3>
+    <ul>${c.topics.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+    <p class="muted">${T('This section is being prepared. It will get theory, labs, quizzes and an exam like the MTCNA course. Every MikroTik engineer course requires a valid MTCNA certificate, so MTCNA is the place to start.', 'Раздел в разработке. Здесь появятся теория, лабораторные работы, тесты и экзамен, как в курсе MTCNA. Для всех инженерных курсов MikroTik нужен действующий сертификат MTCNA, поэтому начните с него.')}</p>
+    <div class="row wrap"><a class="btn" href="#/mtcna">${T('Go to MTCNA', 'Перейти к MTCNA')}</a><a class="btn ghost" href="#/">${T('All courses', 'Все курсы')}</a></div>
+  </section>`)
+}
+
+function glossaryPage(focus) {
+  const catName = Object.fromEntries(CATS.map(([id, en, ru]) => [id, T(en, ru)]))
+  const sorted = [...GLOSSARY].sort((a, b) => a.term.localeCompare(b.term, 'en', { sensitivity: 'base' }))
+  const html = shell('glossary', `<h1>${T('Glossary', 'Словарь')}</h1>
+  <p class="lead">${T(`${GLOSSARY.length} terms and abbreviations from networking and RouterOS. Highlighted terms in lessons, labs and simulators open a short explanation on click.`, `${GLOSSARY.length} терминов и аббревиатур из сетей и RouterOS. Выделенные термины в уроках, лабах и симуляторах открывают короткое объяснение по клику.`)}</p>
+  <div class="gl-bar card">
+    <input type="search" id="gl-q" placeholder="${T('Search: DHCP, bridge, маска…', 'Поиск: DHCP, бридж, маска…')}" aria-label="${T('Search the glossary', 'Поиск по словарю')}">
+    <div class="row wrap" id="gl-cats"><button class="chip on" data-cat="">${T('All', 'Все')}</button>${CATS.map(([id]) => `<button class="chip" data-cat="${id}">${catName[id]}</button>`).join('')}</div>
+  </div>
+  <p class="muted sm" id="gl-count"></p>
+  <div class="gl-list" id="gl-list"></div>`)
+  return { html, after: () => {
+    let cat = '', q = ''
+    const list = document.getElementById('gl-list')
+    const draw = () => {
+      const s = q.trim().toLowerCase()
+      const items = sorted.filter((g) => (!cat || g.cat === cat) && (!s || [g.term, g.full, g.ru, g.en, g.ruDef, ...(g.aliases || [])].some((x) => String(x).toLowerCase().replace(/\*/g, '').includes(s))))
+      document.getElementById('gl-count').textContent = T(`${items.length} of ${GLOSSARY.length}`, `${items.length} из ${GLOSSARY.length}`)
+      list.innerHTML = items.map((g) => `<article class="gl-entry" id="g-${g.id}">
+        <div class="gl-head" data-noterms><h3>${esc(g.term)}</h3><span class="tag">${catName[g.cat]}</span></div>
+        <div class="gl-sub" data-noterms>${esc(g.full)}${LANG === 'ru' && g.ru !== g.term ? ` · ${esc(g.ru)}` : ''}</div>
+        <p>${esc(LANG === 'ru' ? g.ruDef : g.en)}</p></article>`).join('') || `<p class="muted">${T('Nothing found.', 'Ничего не найдено.')}</p>`
+    }
+    document.getElementById('gl-q').oninput = (e) => { q = e.target.value; draw() }
+    document.getElementById('gl-cats').onclick = (e) => {
+      const b = e.target.closest('[data-cat]')
+      if (!b) return
+      cat = b.dataset.cat
+      document.querySelectorAll('#gl-cats .chip').forEach((x) => x.classList.toggle('on', x === b))
+      draw()
+    }
+    draw()
+    const el = focus && document.getElementById('g-' + focus)
+    if (el) { el.classList.add('hl'); el.scrollIntoView({ block: 'center' }) }
+  } }
+}
+
 async function homePage() {
   const counts = await Promise.all(MODULES.map((m) => lessons(m).then((l) => l.length).catch(() => 0)))
   const totalLessons = counts.reduce((a, b) => a + b, 0)
@@ -214,7 +308,7 @@ async function modulePage(id, tab, idx) {
   try { ls = await lessons(mod) } catch { ls = [{ title: T('Could not load', 'Не удалось загрузить'), body: T('Lesson content failed to load. Check your connection and reload.', 'Не удалось загрузить урок. Проверьте подключение и обновите страницу.') }] }
   tab = tab || 'lesson'
   idx = Number(idx || 0)
-  const side = ls.map((l, i) => `<a href="#/module/${id}/lesson/${i}" class="${tab === 'lesson' && i === idx ? 'on' : ''}">${store.data.lessons[id + ':' + i] ? '✓' : `<span class="dot">${i + 1}</span>`} ${esc(l.title)}</a>`).join('')
+  const side = ls.map((l, i) => `<a href="#/module/${id}/lesson/${i}" class="${tab === 'lesson' && i === idx ? 'on' : ''}"><span class="lmark">${store.data.lessons[id + ':' + i] ? '✓' : `<span class="dot">${i + 1}</span>`}</span> ${esc(l.title)}</a>`).join('')
   const labLinks = mod.labs.map((l) => LABS.find((x) => x.id === l)).map((l) => `<a href="#/lab/${l.id}">${store.data.labs[l.id] ? '✓' : '🧪'} ${esc(l.title)}</a>`).join('')
   const simLinks = mod.sims.map((s) => SIMS.find((x) => x.id === s)).map((s) => `<a href="#/sim/${s.id}">${s.icon} ${esc(s.title)}</a>`).join('')
   const q = store.data.quiz[id]
@@ -258,6 +352,7 @@ function runQuiz(el, mod) {
   const answers = new Array(qs.length).fill(null)
   const draw = (submitted) => {
     const score = Math.round((answers.filter((a, i) => a === qs[i].a).length / qs.length) * 100)
+    el.toggleAttribute('data-noterms', !submitted) // term tooltips could give answers away
     el.innerHTML = `<h1>${T('Quiz', 'Тест')}: ${esc(mod.title)}</h1><p class="muted">${T(`${qs.length} questions. Choose one answer for each, then check. Questions and options are shuffled every time.`, `${qs.length} вопросов. Выберите по одному ответу и проверьте. Вопросы и варианты каждый раз перемешиваются.`)}</p>
       ${qs.map((q, i) => `<div class="qcard ${submitted ? (answers[i] === q.a ? 'ok' : 'no') : ''}">
         <div class="qn">${i + 1}. ${esc(q.q)}</div>
@@ -495,6 +590,7 @@ function startExam(el) {
   const t0 = Date.now()
   const end = t0 + EXAM.minutes * 60000
   let cur = 0
+  el.setAttribute('data-noterms', '') // no term tooltips while the exam runs
   const draw = () => {
     const q = qs[cur]
     el.innerHTML = `<div class="exam-bar"><b>${T('Question', 'Вопрос')} ${cur + 1} / ${qs.length}</b><span id="clock" class="clock"></span><button class="btn ghost sm" id="submit">${T('Submit exam', 'Завершить экзамен')}</button></div>
@@ -519,6 +615,7 @@ function startExam(el) {
     store.data.exams.push({ date: Date.now(), score, pass, secs }); store.save()
     const perMod = MODULES.map((m) => { const idx = qs.map((q, i) => q.mod === m.id ? i : -1).filter((i) => i >= 0); return { m, n: idx.length, ok: idx.filter((i) => right[i]).length } }).filter((x) => x.n)
     store.data.examMods = Object.fromEntries(perMod.map((x) => [x.m.id, { ok: x.ok, n: x.n }])); store.save()
+    el.removeAttribute('data-noterms')
     el.innerHTML = `<h1>${T('Exam result', 'Результат экзамена')}</h1>
       <div class="card result-card ${pass ? 'pass' : 'fail'}"><div class="big-score">${score}%</div><div><b>${pass ? T('Passed', 'Сдан') : T('Not passed', 'Не сдан')}</b>${timeout ? T(' (time ran out)', ' (время вышло)') : ''}<br>${T(`${right.filter(Boolean).length} of ${qs.length} correct in ${Math.floor(secs / 60)} min ${secs % 60} s. Pass mark ${EXAM.pass}%.`, `Верно ${right.filter(Boolean).length} из ${qs.length} за ${Math.floor(secs / 60)} мин ${secs % 60} с. Проходной балл ${EXAM.pass}%.`)}</div></div>
       <h3>${T('By module', 'По модулям')}</h3><div class="permod">${perMod.map((x) => `<a href="#/module/${x.m.id}" class="pm"><span>${x.m.icon} ${esc(x.m.title)}</span><b class="${x.ok / x.n >= 0.6 ? 'good' : 'bad'}">${x.ok}/${x.n}</b></a>`).join('')}</div>
@@ -560,14 +657,17 @@ function cheatPage() {
   </div>`)
 }
 
-function notFound() { return shell('', `<h1>${T('Page not found', 'Страница не найдена')}</h1><p><a href="#/">${T('Back to the course', 'Вернуться к курсу')}</a></p>`) }
+function notFound() { return shell('', `<h1>${T('Page not found', 'Страница не найдена')}</h1><p><a href="#/">${T('Back to the academy', 'Вернуться в академию')}</a></p>`) }
 
 // ---------- router ----------
 async function route() {
   if (examTimer && !location.hash.startsWith('#/exam')) { clearInterval(examTimer); examTimer = null }
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
   let page
-  if (!parts.length) page = await homePage()
+  if (!parts.length) page = await academyPage()
+  else if (parts[0] === 'mtcna') page = await homePage()
+  else if (parts[0] === 'course') page = parts[1] === 'mtcna' ? await homePage() : coursePage(parts[1])
+  else if (parts[0] === 'glossary') page = glossaryPage(parts[1])
   else if (parts[0] === 'module') page = await modulePage(parts[1], parts[2], parts[3])
   else if (parts[0] === 'labs') page = labsPage()
   else if (parts[0] === 'lab') page = labPage(parts[1])
@@ -596,13 +696,21 @@ function bindCommon() {
   const mark = document.getElementById('mark')
   if (mark) mark.onclick = () => {
     const k = mark.dataset.k
-    if (store.data.lessons[k]) delete store.data.lessons[k]; else store.data.lessons[k] = true
-    store.save(); route()
+    const done = !store.data.lessons[k]
+    if (done) store.data.lessons[k] = true; else delete store.data.lessons[k]
+    store.save()
+    // update in place: re-rendering the page would jump back to the top
+    mark.textContent = done ? T('✓ Done', '✓ Пройдено') : T('Mark as done', 'Отметить пройденным')
+    mark.classList.toggle('ghost', done)
+    const [mid, idx] = k.split(':')
+    const lm = document.querySelector(`.side a[href="#/module/${mid}/lesson/${idx}"] .lmark`)
+    if (lm) lm.innerHTML = done ? '✓' : `<span class="dot">${Number(idx) + 1}</span>`
   }
   const rp = document.getElementById('reset-progress')
   if (rp) rp.onclick = () => { if (confirm(T('Delete all progress, quiz scores and exam history in this browser?', 'Удалить весь прогресс, результаты тестов и историю экзаменов в этом браузере?'))) { store.data = { lessons: {}, quiz: {}, labs: {}, exams: [], theme: store.data.theme, lang: store.data.lang }; store.save(); route() } }
   bindCopy(root)
 }
 
+initTerms(root)
 window.addEventListener('hashchange', route)
 route()

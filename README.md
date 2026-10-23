@@ -1,6 +1,10 @@
-# MTCNA Academy
+# Academy MikroTik (Академия MikroTik)
 
-Interactive training platform for the MikroTik Certified Network Associate (MTCNA) course.
+Interactive training platform for MikroTik certification courses. The academy home (`#/`) lists the course sections: **MTCNA** is complete, and MTCRE, MTCSWE, MTCWE, MTCTCE, MTCUME, MTCINE, MTCIPv6E and MTCSE have "coming soon" pages (`js/courses.js`).
+
+- **Glossary** (`#/glossary`, `js/glossary.js`): about 230 networking and RouterOS terms in English and Russian, with search and categories. Terms and abbreviations in lessons, labs and simulators are highlighted automatically and show a short explanation on click (`js/terms.js`). Tooltips are off inside a quiz or exam until it is submitted, so they cannot give answers away.
+
+## MTCNA section
 
 - **Theory:** 10 modules and 46 lessons following the MTCNA syllabus (RouterOS intro, first steps, DHCP/ARP/DNS, bridging, routing, wireless, firewall and NAT, QoS, tunnels, tools).
 - **Hands-on labs:** a RouterOS CLI simulator in the browser (tab completion, history, `print`/`add`/`set`/`export`) with 13 guided labs that are checked automatically.
