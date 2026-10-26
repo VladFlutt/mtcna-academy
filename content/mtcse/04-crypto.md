@@ -146,6 +146,92 @@ After the key import, the certificate (named like `certificate.crt_0`) gets the 
 
 The router requests and renews a free certificate automatically. TCP 80 must be reachable from the Internet during the check and the DNS name must point to the router.
 
+# Lesson: Certificate names, revocation and VPN certificates
+
+> This lesson follows the course slides, chapter 4 "Cryptography and PKI".
+
+### The X.500 name inside a certificate
+
+A certificate is a public key plus a name, signed by somebody. The name is written in **X.500** form, and each component has a two-letter code:
+
+| Code | Name | RouterOS parameter | Example |
+|---|---|---|---|
+| `CN` | Common Name, the identity itself | `common-name` | `vpn.example.com` |
+| `O` | Organization | `organization` | `Example Ltd` |
+| `OU` | Organizational Unit | `unit` | `IT` |
+| `L` | Locality, the city | `locality` | `Riga` |
+| `ST` | State or province | `state` | `Riga` |
+| `C` | Country, two letters | `country` | `LV` |
+
+Keep three words apart: **X.509** is the format of the certificate, **X.500** is the naming scheme used inside it, and a **CSR** (certificate signing request) is the same information *before* a CA has signed it.
+
+> **The Common Name matters more than the rest.** A VPN client checks the CN, or a `subject-alt-name`, against the name it dialled. `O` and `L` are decoration; a wrong CN breaks the connection with a name-mismatch error.
+
+### Revoking a certificate: CRL
+
+A certificate stays valid until it expires, unless you revoke it. The CA publishes a **CRL** (certificate revocation list) of the serial numbers it no longer honours, and the other side checks that list.
+
+    /certificate issued-revoke client1
+    /certificate crl print
+
+    /certificate settings set crl-download=yes crl-use=yes crl-store=ram
+
+- **`crl-download`** fetches the CRLs named in the certificates you verify.
+- **`crl-use`** actually rejects a revoked certificate. Downloading without using it changes nothing.
+- **`crl-store=ram`** keeps the list in memory, which is what you want on a router with flash you would rather not wear out.
+
+For your own CA to publish a CRL it needs a **CRL host**, the address where the list can be fetched, and it must be set **before you sign anything**:
+
+    /certificate set ca crl-host=192.168.88.1
+
+That address is written inside every certificate the CA issues, as the place to look. Change it afterwards and the certificates you already issued still point at the old address. This is the single most common mistake with a home-made CA.
+
+### SCEP, when you have hundreds of devices
+
+**SCEP** (Simple Certificate Enrollment Protocol) automates enrolment: a device asks the CA for a certificate over HTTP, and the CA either grants it automatically or holds it for an operator to approve. RouterOS can be both a SCEP server and a SCEP client.
+
+It is the right answer for a fleet and the wrong answer for three routers, where `export-certificate` and `import` are faster than setting up the service.
+
+### Certificates in the VPN services
+
+Where the certificates actually get used, with the parameter names the slides show:
+
+    /interface sstp-server server set certificate=server verify-client-certificate=yes enabled=yes
+
+    /interface ovpn-server server set certificate=server require-client-certificate=yes auth=sha1 cipher=aes256 enabled=yes
+
+    /ip ipsec identity set 0 auth-method=digital-signature certificate=server remote-certificate=client1
+
+Three patterns to keep apart:
+
+- **Server certificate only.** The client checks the server, the server checks a username and password. This is the usual SSTP and L2TP/IPsec mode, and what a Windows client does with no extra setup.
+- **Mutual certificates.** `verify-client-certificate=yes` (SSTP) or `require-client-certificate=yes` (OVPN). Nobody connects without a certificate your CA issued, so a stolen password alone is useless. This is the MTCSE answer for road warriors.
+- **IPsec with digital signatures.** The identity references both sides' certificates instead of a pre-shared key. That is how the IKEv2 road warrior in the next module authenticates.
+
+### The Windows client workflow
+
+The slides walk through it, and this is the part students get wrong:
+
+1. Export the CA as a `.crt` and the client as a `.p12`.
+2. Copy both files to the Windows machine.
+3. Install the **CA certificate into "Trusted Root Certification Authorities"**, for the *Local Machine*, not the current user. In the wrong store Windows will not trust your server.
+4. Install the `.p12`; it lands in **Personal** together with its private key.
+5. Create the VPN connection and, for IKEv2 or SSTP, choose certificate authentication.
+
+Two error messages worth memorising:
+
+- *"The connection was prevented because of a policy"* — the CA is almost always in the user store instead of the machine store.
+- *A name mismatch* — the CN of the server certificate is not the name you typed into the connection.
+
+### The lab from the slides
+
+> **Lab:** *Set a CRL host on your CA, issue a client certificate, use it on SSTP with client verification, then revoke it.*
+
+1. `/certificate set ca crl-host=<your LAN address>` **before** signing anything new.
+2. Issue a fresh `client2` certificate and export it as a `.p12`.
+3. Set `verify-client-certificate=yes` on the SSTP server and connect with the certificate.
+4. `/certificate issued-revoke client2`, check `/certificate crl print`, turn on `crl-use=yes` on the server side, and try again.
+
 ### Course lab
 
 - **Lab "Build your own PKI on RouterOS"**: create the CA, the server and client certificates, sign them, and export the CA and a PKCS#12 bundle.

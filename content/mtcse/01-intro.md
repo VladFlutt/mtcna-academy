@@ -45,6 +45,97 @@ One protection is never enough, because one mistake is always possible. **Defens
 
 If you forget layer 2, layer 1 still protects you, and so on.
 
+# Lesson: Threats and types of attack
+
+> This lesson follows the course slides, chapter 1 "Basic Concepts".
+
+### Prevention, detection, reaction
+
+Security work is never only about blocking things. The slides split it into three jobs, and you need all three:
+
+- **Prevention**: stop the attack before it happens (firewall rules, closed services, strong users, updates).
+- **Detection**: notice that something is happening (logs, address lists, DHCP alerts, graphs, `tool profile`).
+- **Reaction**: do something about it (drop the source, disable a port, restore a backup, call the ISP).
+
+A router with a perfect filter but no logging has prevention and nothing else. When something does slip through, you will not even know.
+
+### Identification, authentication, authorization
+
+Three words that sound alike and are asked about in the exam:
+
+| Step | Question it answers | Example |
+|---|---|---|
+| **Identification** | *Who do you claim to be?* | You type the user name `vlad` |
+| **Authentication** | *Can you prove it?* | You send the password, key or certificate |
+| **Authorization** | *What may you do now?* | RouterOS applies the group policies of `vlad` |
+
+Accounting (*what did you do?*) is the fourth step: logs and RADIUS accounting.
+
+### Four classes of attack
+
+Every attack changes the normal flow "sender → receiver" in one of four ways:
+
+| Class | What happens | Property attacked | Example |
+|---|---|---|---|
+| **Interception** | Someone else reads the traffic as well | Confidentiality | Sniffing telnet, ARP spoofing |
+| **Interruption** | The traffic never arrives | Availability | DoS, DDoS, cut cable |
+| **Modification** | The traffic arrives changed | Integrity | Man-in-the-middle rewriting a page |
+| **Fabrication** | Traffic appears that nobody sent | Authenticity | Spoofed DHCP offers, forged e-mail |
+
+> **How to use this:** when you read about a new attack, first ask which of the four it is. That immediately tells you which defence family to reach for: encryption against interception, filtering and capacity against interruption, signatures and hashes against modification, authentication against fabrication.
+
+### The threat catalogue from the slides
+
+**Botnet.** A network of infected machines (bots) controlled by a **bot herder** through **command and control (CnC)** servers. The slides show three shapes:
+
+- **Client-server, star**: every bot talks to one CnC server. Simple, but take down the server and the botnet is dead.
+- **Client-server, multi-server / hierarchical**: several CnC servers, or layers of them, so losing one does not stop the rest.
+- **Peer-to-peer**: no fixed server at all; bots pass commands to each other. Hardest to kill.
+
+**DDoS.** A distributed denial of service, usually run from a botnet. Three families:
+
+- **Volumetric**: fill the link (UDP flood, amplification). Measured in bits per second.
+- **Protocol**: exhaust a table or state (SYN flood, ping of death). Measured in packets per second.
+- **Application**: exhaust the server itself with valid-looking requests (HTTP flood, slow requests).
+
+**Malware and friends:**
+
+| Threat | What it is |
+|---|---|
+| **Virus** | Code that attaches itself to a file and needs a user to run it |
+| **Worm** | Spreads by itself over the network, no user needed |
+| **Trojan** | Looks like useful software, carries something else inside |
+| **Ransomware** | Encrypts your data and asks for payment |
+| **Spyware** | Collects what you type and where you go |
+| **Adware** | Injects advertising, often as a side effect of spyware |
+| **Spam** | Unwanted bulk mail, the delivery van for phishing and malware |
+
+**Phishing** is the social part, and the slides name four flavours:
+
+- **Deceptive phishing**: mass mail pretending to be a bank or a service.
+- **Spear phishing**: written for one person, using details about them.
+- **Whaling**: spear phishing aimed at a director or an owner.
+- **Pharming**: no mail at all; the DNS answer or the hosts file is poisoned, so the right address takes you to the wrong server.
+
+**Spoofing** means pretending to be someone else at the protocol level:
+
+- **IP spoofing**: a fake source address (used in DDoS and smurf attacks). Answer: `rp-filter` and RAW rules.
+- **DNS spoofing**: a fake DNS answer. Answer: trusted resolvers, DNS over HTTPS/TLS, static entries.
+- **E-mail spoofing**: a fake `From:`. Answer: SPF, DKIM, DMARC on the mail side.
+
+### Where to put the firewall
+
+The slides compare four deployment options. There is no single right answer; there is a trade-off:
+
+| Option | Plus | Minus |
+|---|---|---|
+| **Global firewall router** (one router filters everything) | One place to configure, cheapest | Single point of failure, all the CPU load lands on it |
+| **Firewall on each specific router** | Rules live next to the network they protect, load is spread | Many places to keep in sync, easy to forget one |
+| **Dedicated IPS/IDS appliance** | Deep inspection, signatures, reporting | Expensive, another device to run, can become a bottleneck |
+| **MikroTik plus an IDS as a trigger** | The IDS only detects and tells RouterOS which address to drop; RouterOS does the cheap blocking | You must build and maintain the glue (scripts, API, address lists) |
+
+The last option is the one the MTCSE course keeps coming back to: **detect in software, block in an address list, drop in RAW.** You will build exactly that pattern in the port scan and brute force labs.
+
 # Lesson: Attack surface of a RouterOS device
 
 The **attack surface** is everything an attacker can talk to. On a router it is the list of open services plus every protocol the router answers on the LAN.
