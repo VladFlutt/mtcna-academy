@@ -17,11 +17,15 @@ const BOOL = ['yes', 'no']
 const CHAINS_FILTER = ['input', 'forward', 'output']
 const ACT_FILTER = ['accept', 'drop', 'reject', 'jump', 'return', 'log', 'passthrough', 'add-src-to-address-list', 'add-dst-to-address-list', 'fasttrack-connection', 'tarpit']
 const ACT_NAT = ['accept', 'masquerade', 'src-nat', 'dst-nat', 'redirect', 'netmap', 'same', 'jump', 'return', 'log', 'passthrough']
+const ACT_RAW = ['accept', 'drop', 'notrack', 'jump', 'return', 'log', 'passthrough', 'add-src-to-address-list', 'add-dst-to-address-list']
 const ACT_MANGLE = ['mark-connection', 'mark-packet', 'mark-routing', 'change-dscp', 'change-ttl', 'change-mss', 'accept', 'jump', 'return', 'log', 'passthrough']
 const FW_MATCH = ['chain', 'action', 'protocol', 'src-address', 'dst-address', 'src-port', 'dst-port', 'in-interface', 'out-interface',
   'in-interface-list', 'out-interface-list', 'connection-state', 'connection-nat-state', 'src-address-list', 'dst-address-list',
   'jump-target', 'address-list', 'address-list-timeout', 'log-prefix', 'comment', 'disabled', 'place-before', 'connection-mark',
-  'packet-mark', 'ipsec-policy', 'hw-offload', 'limit', 'connection-limit']
+  'packet-mark', 'ipsec-policy', 'hw-offload', 'limit', 'connection-limit', 'psd', 'tcp-flags', 'dst-limit', 'src-address-type',
+  'dst-address-type', 'icmp-options', 'in-bridge-port']
+const KEY_USAGE = ['digital-signature', 'content-commitment', 'key-encipherment', 'data-encipherment', 'key-agreement', 'key-cert-sign', 'crl-sign',
+  'encipher-only', 'decipher-only', 'tls-server', 'tls-client', 'code-sign', 'email-protect', 'timestamp', 'ocsp-sign', 'ipsec-end-system', 'ipsec-tunnel', 'ipsec-user', 'ipsec-ike']
 
 // Menu definitions. kind: list | singleton | fixed (list without add/remove)
 const MENUS = {
@@ -38,8 +42,8 @@ const MENUS = {
   'interface pppoe-client': { kind: 'list', fields: ['name', 'interface', 'user', 'password', 'add-default-route', 'use-peer-dns', 'service-name', 'comment', 'disabled', 'default-route-distance'], req: ['interface'], cols: ['name', 'interface', 'user', 'status'], iface: 'pppoe-out', defaults: { 'add-default-route': 'no', 'use-peer-dns': 'no', disabled: 'yes' } },
   'interface pppoe-server server': { kind: 'list', fields: ['service-name', 'interface', 'default-profile', 'one-session-per-host', 'max-sessions', 'keepalive-timeout', 'authentication', 'disabled'], req: ['interface'], cols: ['service-name', 'interface', 'default-profile', 'one-session-per-host'], defaults: { 'default-profile': 'default', 'one-session-per-host': 'no', 'keepalive-timeout': '10', disabled: 'yes', 'service-name': 'service1' } },
   'interface pptp-server server': { kind: 'singleton', fields: ['enabled', 'authentication', 'default-profile', 'max-mtu'], defaults: { enabled: 'no', authentication: 'mschap1,mschap2', 'default-profile': 'default-encryption' } },
-  'interface l2tp-server server': { kind: 'singleton', fields: ['enabled', 'authentication', 'default-profile', 'use-ipsec', 'ipsec-secret'], defaults: { enabled: 'no', 'use-ipsec': 'no', 'default-profile': 'default-encryption' } },
-  'interface sstp-server server': { kind: 'singleton', fields: ['enabled', 'authentication', 'default-profile', 'certificate', 'port'], defaults: { enabled: 'no', port: '443', 'default-profile': 'default' } },
+  'interface l2tp-server server': { kind: 'singleton', fields: ['enabled', 'authentication', 'default-profile', 'use-ipsec', 'ipsec-secret', 'max-mtu', 'max-mru', 'keepalive-timeout', 'max-sessions', 'caller-id-type', 'one-session-per-host', 'allow-fast-path'], defaults: { enabled: 'no', 'use-ipsec': 'no', 'ipsec-secret': '', 'default-profile': 'default-encryption', authentication: 'pap,chap,mschap1,mschap2', 'max-mtu': '1450', 'max-mru': '1450', 'keepalive-timeout': '30' } },
+  'interface sstp-server server': { kind: 'singleton', fields: ['enabled', 'authentication', 'default-profile', 'certificate', 'port', 'max-mtu', 'max-mru', 'keepalive-timeout', 'tls-version', 'verify-client-certificate', 'force-aes', 'pfs', 'ciphers'], defaults: { enabled: 'no', port: '443', 'default-profile': 'default', certificate: 'none', authentication: 'pap,chap,mschap1,mschap2', 'tls-version': 'any', 'verify-client-certificate': 'no', 'keepalive-timeout': '60', 'max-mtu': '1500', 'max-mru': '1500' } },
   'interface pptp-client': { kind: 'list', fields: ['name', 'connect-to', 'user', 'password', 'profile', 'add-default-route', 'comment', 'disabled'], req: ['connect-to'], cols: ['name', 'connect-to', 'user', 'status'], iface: 'pptp-out', defaults: { profile: 'default-encryption', 'add-default-route': 'no', disabled: 'yes' } },
   'interface l2tp-client': { kind: 'list', fields: ['name', 'connect-to', 'user', 'password', 'profile', 'use-ipsec', 'ipsec-secret', 'add-default-route', 'comment', 'disabled'], req: ['connect-to'], cols: ['name', 'connect-to', 'user', 'status'], iface: 'l2tp-out', defaults: { profile: 'default-encryption', disabled: 'yes' } },
   'ip address': { kind: 'list', fields: ['address', 'interface', 'network', 'comment', 'disabled'], req: ['address', 'interface'], cols: ['address', 'network', 'interface'] },
@@ -55,8 +59,24 @@ const MENUS = {
   'ip firewall filter': { kind: 'list', fields: FW_MATCH, req: ['chain'], cols: ['chain', 'action', 'match'], defaults: { action: 'accept' }, ordered: true },
   'ip firewall nat': { kind: 'list', fields: [...FW_MATCH, 'to-addresses', 'to-ports'], req: ['chain'], cols: ['chain', 'action', 'match'], defaults: { action: 'accept' }, ordered: true },
   'ip firewall mangle': { kind: 'list', fields: [...FW_MATCH, 'new-connection-mark', 'new-packet-mark', 'new-routing-mark', 'passthrough'], req: ['chain'], cols: ['chain', 'action', 'match'], defaults: { action: 'accept' }, ordered: true },
+  'ip firewall raw': { kind: 'list', fields: FW_MATCH, req: ['chain'], cols: ['chain', 'action', 'match'], defaults: { action: 'accept' }, ordered: true },
+  'ip firewall connection tracking': { kind: 'singleton', fields: ['enabled', 'tcp-syn-sent-timeout', 'tcp-established-timeout', 'udp-timeout', 'loose-tcp-tracking'], defaults: { enabled: 'auto', 'tcp-established-timeout': '1d', 'udp-timeout': '30s', 'loose-tcp-tracking': 'yes' } },
   'ip firewall address-list': { kind: 'list', fields: ['list', 'address', 'timeout', 'comment', 'disabled'], req: ['list', 'address'], cols: ['list', 'address'] },
   'ip firewall connection': { kind: 'fixed', fields: [], cols: ['protocol', 'src-address', 'dst-address', 'state'] },
+  'ip ssh': { kind: 'singleton', fields: ['forwarding-enabled', 'strong-crypto', 'always-allow-password-login', 'host-key-size', 'host-key-type'], defaults: { 'forwarding-enabled': 'no', 'strong-crypto': 'no', 'always-allow-password-login': 'no', 'host-key-size': '2048', 'host-key-type': 'rsa' } },
+  'ip settings': { kind: 'singleton', fields: ['ip-forward', 'rp-filter', 'tcp-syncookies', 'accept-redirects', 'send-redirects', 'secure-redirects', 'accept-source-route'], defaults: { 'ip-forward': 'yes', 'rp-filter': 'no', 'tcp-syncookies': 'no', 'accept-redirects': 'no', 'send-redirects': 'yes', 'secure-redirects': 'yes', 'accept-source-route': 'no' } },
+  'ip dhcp-server alert': { kind: 'list', fields: ['interface', 'valid-server', 'alert-timeout', 'on-alert', 'comment', 'disabled'], req: ['interface'], cols: ['interface', 'valid-server', 'alert-timeout'] },
+  'certificate': { kind: 'list', fields: ['name', 'common-name', 'subject-alt-name', 'key-usage', 'key-size', 'days-valid', 'country', 'state', 'locality', 'organization', 'unit', 'trusted', 'comment'], req: ['name'], cols: ['name', 'common-name', 'subject-alt-name'], defaults: { 'key-size': '2048', 'days-valid': '365', trusted: 'no' } },
+  'ip ipsec profile': { kind: 'list', fields: ['name', 'hash-algorithm', 'enc-algorithm', 'dh-group', 'lifetime', 'nat-traversal', 'dpd-interval', 'dpd-maximum-failures', 'proposal-check'], req: ['name'], cols: ['name', 'hash-algorithm', 'enc-algorithm', 'dh-group'], defaults: { 'hash-algorithm': 'sha1', 'enc-algorithm': 'aes-128,3des', 'dh-group': 'modp2048,modp1024', lifetime: '1d', 'nat-traversal': 'yes', 'dpd-interval': '2m', 'proposal-check': 'obey' } },
+  'ip ipsec proposal': { kind: 'list', fields: ['name', 'auth-algorithms', 'enc-algorithms', 'pfs-group', 'lifetime', 'comment', 'disabled'], req: ['name'], cols: ['name', 'auth-algorithms', 'enc-algorithms', 'pfs-group'], defaults: { 'auth-algorithms': 'sha1', 'enc-algorithms': 'aes-256-cbc,aes-192-cbc,aes-128-cbc', 'pfs-group': 'modp1024', lifetime: '30m' } },
+  'ip ipsec policy group': { kind: 'list', fields: ['name', 'comment'], req: ['name'], cols: ['name'] },
+  'ip ipsec policy': { kind: 'list', fields: ['src-address', 'dst-address', 'src-port', 'dst-port', 'protocol', 'template', 'group', 'proposal', 'action', 'level', 'tunnel', 'peer', 'sa-src-address', 'sa-dst-address', 'comment', 'disabled'], req: [], cols: ['peer', 'tunnel', 'src-address', 'dst-address', 'template', 'group'], defaults: { 'src-address': '0.0.0.0/0', 'dst-address': '0.0.0.0/0', proposal: 'default', action: 'encrypt', level: 'require', tunnel: 'no', template: 'no' } },
+  'ip ipsec peer': { kind: 'list', fields: ['name', 'address', 'local-address', 'port', 'profile', 'exchange-mode', 'passive', 'send-initial-contact', 'comment', 'disabled'], req: ['name'], cols: ['name', 'address', 'profile', 'exchange-mode', 'passive'], defaults: { profile: 'default', 'exchange-mode': 'main', passive: 'no', 'send-initial-contact': 'yes' } },
+  'ip ipsec identity': { kind: 'list', fields: ['peer', 'auth-method', 'secret', 'certificate', 'remote-certificate', 'generate-policy', 'policy-template-group', 'mode-config', 'my-id', 'remote-id', 'match-by', 'username', 'password', 'eap-methods', 'notrack-chain', 'comment', 'disabled'], req: ['peer'], cols: ['peer', 'auth-method', 'certificate', 'generate-policy', 'mode-config'], defaults: { 'auth-method': 'pre-shared-key', 'generate-policy': 'no', 'policy-template-group': 'default', 'match-by': 'remote-id', 'my-id': 'auto', 'remote-id': 'auto' } },
+  'ip ipsec mode-config': { kind: 'list', fields: ['name', 'responder', 'address-pool', 'address', 'address-prefix-length', 'split-include', 'system-dns', 'static-dns', 'comment'], req: ['name'], cols: ['name', 'responder', 'address-pool', 'split-include'], defaults: { responder: 'yes', 'system-dns': 'yes' } },
+  'ip ipsec active-peers': { kind: 'fixed', fields: [], cols: ['id', 'state', 'uptime', 'remote-address'] },
+  'ip ipsec installed-sa': { kind: 'fixed', fields: [], cols: ['spi', 'src-address', 'dst-address', 'state'] },
+  'ip ipsec': { kind: 'none' },
   'ip service': { kind: 'fixed', fields: ['port', 'address', 'disabled', 'certificate'], cols: ['name', 'port', 'address'] },
   'ip cloud': { kind: 'singleton', fields: ['ddns-enabled', 'update-time'], defaults: { 'ddns-enabled': 'no', 'update-time': 'yes' } },
   'ip neighbor discovery-settings': { kind: 'singleton', fields: ['discover-interface-list'], defaults: { 'discover-interface-list': 'all' } },
@@ -109,6 +129,7 @@ const EXTRA_CMDS = {
   'interface wireless': ['scan', 'print', 'set', 'enable', 'disable', 'export'],
   'ip dhcp-server': ['setup'],
   'ip dhcp-server lease': ['make-static'],
+  'certificate': ['sign', 'import', 'export-certificate'],
   'ip': [],
 }
 
@@ -162,6 +183,11 @@ function baseState() {
   addItem(st, 'interface wireless security-profiles', { name: 'default', mode: 'none' }, true)
   addItem(st, 'ppp profile', { name: 'default' }, true)
   addItem(st, 'ppp profile', { name: 'default-encryption', 'use-encryption': 'yes' }, true)
+  addItem(st, 'ip ipsec profile', { name: 'default' }, true)
+  addItem(st, 'ip ipsec proposal', { name: 'default' }, true)
+  addItem(st, 'ip ipsec policy group', { name: 'default' }, true)
+  addItem(st, 'ip ipsec policy', { 'src-address': '::/0', 'dst-address': '::/0', group: 'default', proposal: 'default', template: 'yes' }, true)
+  addItem(st, 'ip ipsec mode-config', { name: 'request-only', responder: 'no' }, true)
   for (const [n, k] of [['default', 'pfifo'], ['default-small', 'pfifo'], ['ethernet-default', 'pfifo'], ['wireless-default', 'sfq'], ['synchronous-default', 'red'], ['hotspot-default', 'sfq'], ['pcq-upload-default', 'pcq'], ['pcq-download-default', 'pcq'], ['only-hardware-queue', 'none'], ['multi-queue-ethernet-default', 'mq-pfifo']])
     addItem(st, 'queue type', { name: n, kind: k, ...(k === 'pcq' ? { 'pcq-rate': '0', 'pcq-classifier': n.includes('upload') ? 'src-address' : 'dst-address' } : {}) }, true)
   return st
@@ -370,6 +396,8 @@ function addrInList(st, list, ip) {
   return st.lists['ip firewall address-list'].some((a) => a.list === list && on(a) && matchAddr(a.address, ip))
 }
 
+const tcpFlags = (p) => p.flags ? p.flags.split(',') : p.state === 'new' ? ['syn'] : ['ack']
+
 // Does one firewall rule match packet p?
 export function ruleMatches(st, r, p) {
   const chk = (key, fn) => {
@@ -390,8 +418,12 @@ export function ruleMatches(st, r, p) {
     && chk('out-interface-list', (v) => !!p.outIf && ifaceInList(st, p.outIf, v))
     && chk('connection-state', (v) => v.split(',').includes(p.state || 'new'))
     && chk('connection-nat-state', (v) => v.split(',').includes(p.natState || ''))
-    && chk('src-address-list', (v) => addrInList(st, v, p.src))
-    && chk('dst-address-list', (v) => addrInList(st, v, p.dst))
+    && chk('src-address-list', (v) => p.inList ? p.inList(v, p.src) : addrInList(st, v, p.src))
+    && chk('dst-address-list', (v) => p.inList ? p.inList(v, p.dst) : addrInList(st, v, p.dst))
+    && chk('ipsec-policy', (v) => { const [dir, pol] = v.split(','); return (dir === 'in' ? !!p.ipsecIn : !!p.ipsecOut) === (pol === 'ipsec') })
+    && chk('tcp-flags', (v) => p.protocol === 'tcp' && v.split(',').every((f) => f.startsWith('!') ? !tcpFlags(p).includes(f.slice(1)) : tcpFlags(p).includes(f)))
+    && chk('psd', (v) => !!p.psd && p.psd(v))
+    && chk('connection-limit', (v) => p.connCount !== undefined && p.connCount > Number(v.split(',')[0]))
     && chk('packet-mark', (v) => v === (p.packetMark || ''))
     && chk('connection-mark', (v) => v === (p.connMark || ''))
 }
@@ -412,7 +444,9 @@ export function evalChain(st, table, chain, p, depth = 0) {
       continue
     }
     if (a === 'return') return { verdict: depth ? 'return' : 'accept', rule: r, trace }
+    if (['add-src-to-address-list', 'add-dst-to-address-list'].includes(a) && p.addToList) { p.addToList(r['address-list'], a === 'add-src-to-address-list' ? p.src : p.dst, r['address-list-timeout']); continue }
     if (['log', 'passthrough', 'add-src-to-address-list', 'add-dst-to-address-list', 'fasttrack-connection'].includes(a)) continue
+    if (a === 'notrack') return { verdict: 'accept', rule: r, trace, notrack: true }
     if (table === 'mangle') {
       if (a === 'mark-connection') p.connMark = r['new-connection-mark']
       if (a === 'mark-packet') p.packetMark = r['new-packet-mark']
@@ -422,6 +456,47 @@ export function evalChain(st, table, chain, p, depth = 0) {
     return { verdict: a === 'tarpit' ? 'drop' : a, rule: r, trace }
   }
   return { verdict: depth ? 'return' : (table === 'nat' ? 'none' : 'accept'), trace }
+}
+
+// Replay a timed sequence of packets to the router (raw prerouting, then filter input) with live
+// address lists: add-src-to-address-list rules take effect at once and entries expire by timeout.
+// packets: [{ t (seconds), src, dst, protocol, dstPort, inIf, state }]. Returns { results, lists }.
+const secs = (v) => {
+  if (!v) return Infinity
+  let n = 0
+  for (const [, x, u] of String(v).matchAll(/(\d+)([wdhms]?)/g)) n += Number(x) * ({ w: 604800, d: 86400, h: 3600, m: 60, s: 1, '': 1 }[u])
+  return n || Infinity
+}
+export function replay(st, packets) {
+  const dyn = st.lists['ip firewall address-list'].filter(on).map((a) => ({ list: a.list, address: a.address, until: secs(a.timeout) }))
+  const seen = {}
+  const results = []
+  for (const pk of packets) {
+    const now = pk.t || 0
+    const p = { state: 'new', ...pk }
+    p.inList = (list, ip) => dyn.some((e) => e.list === list && e.until > now && matchAddr(e.address, ip))
+    p.addToList = (list, ip, timeout) => {
+      const e = dyn.find((x) => x.list === list && x.address === ip)
+      const until = now + secs(timeout)
+      if (e) e.until = until; else dyn.push({ list, address: ip, until })
+    }
+    const hist = (seen[p.src] = (seen[p.src] || []).concat(p.protocol === 'tcp' && p.state === 'new' ? [{ t: now, port: p.dstPort }] : []))
+    p.psd = (spec) => {
+      const [w, d, lo, hi] = spec.split(',')
+      const win = hist.filter((h) => now - h.t <= secs(d))
+      const ports = new Map(win.map((h) => [h.port, h.port < 1024 ? Number(lo) : Number(hi)]))
+      return [...ports.values()].reduce((a, b) => a + b, 0) >= Number(w)
+    }
+    const raw = evalChain(st, 'raw', 'prerouting', p)
+    if (raw.verdict === 'drop') { results.push({ verdict: 'drop', table: 'raw', rule: raw.rule }); continue }
+    if (!raw.notrack && p.connCount === undefined) p.connCount = 0
+    const f = evalChain(st, 'filter', 'input', p)
+    results.push({ verdict: f.verdict === 'return' ? 'accept' : f.verdict, table: 'filter', rule: f.rule })
+  }
+  const end = packets.length ? packets[packets.length - 1].t || 0 : 0
+  const lists = {}
+  for (const e of dyn) if (e.until > end) (lists[e.list] = lists[e.list] || []).push(e.address)
+  return { results, lists }
 }
 
 export function routerIps(st) {
@@ -475,6 +550,7 @@ export function laptopReach(st, dst, protocol = 'icmp', dstPort) {
   const lc = parseCidr(L.ip)
   if (!L.routerIp) return { ok: false, reason: 'laptop is not in the same subnet as the router' }
   const src = intToIp(lc.ip)
+  if (evalChain(st, 'raw', 'prerouting', { src, dst, protocol, dstPort, inIf: L.l3, inBridgePort: L.port, state: 'new' }).verdict === 'drop') return { ok: false, reason: 'dropped by firewall raw' }
   if (dst === L.routerIp || routerIps(st).includes(dst)) {
     const p = { src, dst, protocol, dstPort, inIf: L.l3, inBridgePort: L.port, state: 'new' }
     const v = evalChain(st, 'filter', 'input', p)
@@ -661,7 +737,7 @@ export class RouterOS {
     if (cmd === 'quit' || cmd === 'exit') { st.loggedOut = true; return 'interrupted\nwelcome back!' }
     if (cmd === 'help' && path === '') return HELP
     if (cmd === 'export' && path === '') return this.exportAll(kv)
-    if (cmd === 'import') return 'Script file loaded and executed successfully'
+    if (cmd === 'import' && path === '') return 'Script file loaded and executed successfully'
     if (path === '' && cmd !== 'export') {
       const kids = childMenus('').filter((k) => k.startsWith(cmd))
       return `bad command name ${cmd} (line 1 column ${line.indexOf(cmd) + 1})` + (kids.length ? '' : '')
@@ -697,6 +773,7 @@ export class RouterOS {
     if (path === 'ip dhcp-server' && cmd === 'setup') return 'The interactive DHCP setup wizard is not simulated.\nCreate it manually:\n  /ip pool add name=pool1 ranges=192.168.33.10-192.168.33.254\n  /ip dhcp-server add interface=bridgeLAN address-pool=pool1 disabled=no\n  /ip dhcp-server network add address=192.168.33.0/24 gateway=192.168.33.1 dns-server=192.168.33.1'
     if (path === 'ip dhcp-server lease' && cmd === 'make-static') return 'ok (simulated)'
     if (path === 'tool' && ['torch', 'profile', 'bandwidth-test', 'sniffer'].includes(cmd)) return this.toolSim(cmd, pos, kv)
+    if (path === 'certificate' && ['sign', 'import', 'export-certificate'].includes(cmd)) return this.certCmd(cmd, pos, kv)
     if (cmd === 'export') return this.exportMenu(path, kv)
     if (m.kind === 'info') return this.info(path)
     if (cmd === 'print') return this.print(path, kv, pos)
@@ -705,6 +782,10 @@ export class RouterOS {
       if (cmd !== 'set') return `bad command name ${cmd}`
       for (const k of Object.keys(kv)) if (!m.fields.includes(k)) return this.colErr(line, k + '=')
       if (path === 'system identity' && kv.name !== undefined && kv.name.length > 64) return 'failure: identity name too long (max 64)'
+      const allowed = { 'ip ssh': { 'forwarding-enabled': ['no', 'local', 'remote', 'both'], 'strong-crypto': BOOL, 'always-allow-password-login': BOOL }, 'ip settings': { 'rp-filter': ['no', 'strict', 'loose'], 'tcp-syncookies': BOOL, 'accept-redirects': BOOL, 'send-redirects': BOOL, 'secure-redirects': BOOL, 'accept-source-route': BOOL, 'ip-forward': BOOL },
+        'interface l2tp-server server': { 'use-ipsec': ['no', 'yes', 'required'], enabled: BOOL }, 'interface sstp-server server': { 'tls-version': ['any', 'only-1.2', 'only-1.3'], enabled: BOOL, 'verify-client-certificate': BOOL, 'force-aes': BOOL, pfs: BOOL } }[path] || {}
+      for (const [k, v] of Object.entries(kv)) if (allowed[k] && !allowed[k].includes(v)) return `invalid value ${v} for argument ${k}`
+      if (path === 'interface sstp-server server' && kv.certificate && kv.certificate !== 'none' && !st.lists.certificate.some((c) => c.name === kv.certificate)) return 'input does not match any value of certificate'
       Object.assign(st.singletons[path], kv)
       return ''
     }
@@ -772,6 +853,7 @@ export class RouterOS {
         continue
       }
       if (path === 'ip firewall address-list' && k === 'address') continue
+      if (path.startsWith('ip ipsec') && v.includes(':')) continue
       const vals = v.replace(/^!/, '').split(',')
       for (const x of vals) {
         const ok = x.includes('-') ? x.split('-').every((y) => ipToInt(y) !== null) : !!parseCidr(x)
@@ -782,7 +864,8 @@ export class RouterOS {
       // custom chains are allowed, but warn on common mistakes
       if (['input', 'forward', 'output'].includes(kv.chain)) this._err('invalid value for argument chain (NAT chains are srcnat and dstnat)')
     }
-    const acts = path === 'ip firewall filter' ? ACT_FILTER : path === 'ip firewall nat' ? ACT_NAT : path === 'ip firewall mangle' ? ACT_MANGLE : null
+    if (kv.chain && path === 'ip firewall raw' && ['input', 'forward', 'postrouting', 'srcnat', 'dstnat'].includes(kv.chain)) this._err('invalid value for argument chain (RAW chains are prerouting and output)')
+    const acts = path === 'ip firewall filter' ? ACT_FILTER : path === 'ip firewall nat' ? ACT_NAT : path === 'ip firewall mangle' ? ACT_MANGLE : path === 'ip firewall raw' ? ACT_RAW : null
     if (acts && kv.action && !acts.includes(kv.action)) this._err(`invalid value ${kv.action} for argument action`)
     if (acts && kv.action === 'jump' && !kv['jump-target'] && !(existing && existing['jump-target'])) this._err('failure: jump-target not specified')
     if (path === 'interface bridge port' && kv.interface) {
@@ -798,7 +881,23 @@ export class RouterOS {
       const f = Number(kv.frequency)
       if (!(f >= 2412 && f <= 2484) && !(f >= 5150 && f <= 5900)) this._err('invalid value for argument frequency')
     }
-    for (const k of ['disabled', 'add-default-route', 'use-peer-dns', 'allow-remote-requests', 'default-forward', 'default-authenticate', 'only-one', 'one-session-per-host', 'enabled', 'passthrough']) {
+    if (path === 'certificate' && kv['key-usage']) for (const u of kv['key-usage'].split(',')) if (!KEY_USAGE.includes(u)) this._err(`invalid value ${u} for argument key-usage`)
+    if (path === 'ip ipsec peer' && kv['exchange-mode'] && !['main', 'aggressive', 'ike2', 'base'].includes(kv['exchange-mode'])) this._err(`invalid value ${kv['exchange-mode']} for argument exchange-mode`)
+    if (path === 'ip ipsec identity') {
+      if (kv['auth-method'] && !['pre-shared-key', 'pre-shared-key-xauth', 'digital-signature', 'rsa-key', 'eap', 'eap-radius'].includes(kv['auth-method'])) this._err(`invalid value ${kv['auth-method']} for argument auth-method`)
+      if (kv['generate-policy'] && !['no', 'port-override', 'port-strict'].includes(kv['generate-policy'])) this._err(`invalid value ${kv['generate-policy']} for argument generate-policy`)
+      if (kv.peer && !st.lists['ip ipsec peer'].some((x) => x.name === kv.peer)) this._err('input does not match any value of peer')
+      if (kv['mode-config'] && !st.lists['ip ipsec mode-config'].some((x) => x.name === kv['mode-config'])) this._err('input does not match any value of mode-config')
+      if (kv['policy-template-group'] && !st.lists['ip ipsec policy group'].some((x) => x.name === kv['policy-template-group'])) this._err('input does not match any value of policy-template-group')
+      for (const k of ['certificate', 'remote-certificate']) if (kv[k] && kv[k] !== 'none' && !st.lists.certificate.some((c) => c.name === kv[k])) this._err(`input does not match any value of ${k}`)
+    }
+    if (path === 'ip ipsec peer' && kv.profile && !st.lists['ip ipsec profile'].some((x) => x.name === kv.profile)) this._err('input does not match any value of profile')
+    if (path === 'ip ipsec policy') {
+      if (kv.group && !st.lists['ip ipsec policy group'].some((x) => x.name === kv.group)) this._err('input does not match any value of group')
+      if (kv.proposal && !st.lists['ip ipsec proposal'].some((x) => x.name === kv.proposal)) this._err('input does not match any value of proposal')
+    }
+    if (path === 'ip ipsec mode-config' && kv['address-pool'] && !st.lists['ip pool'].some((x) => x.name === kv['address-pool'])) this._err('input does not match any value of address-pool')
+    for (const k of ['disabled', 'add-default-route', 'use-peer-dns', 'allow-remote-requests', 'default-forward', 'default-authenticate', 'only-one', 'one-session-per-host', 'enabled', 'passthrough', 'template', 'passive', 'responder', 'system-dns', 'send-initial-contact', 'trusted']) {
       if (kv[k] !== undefined && !BOOL.includes(kv[k]) && !(k === 'only-one' && kv[k] === 'default')) this._err(`invalid value ${kv[k]} for argument ${k}`)
     }
   }
@@ -823,6 +922,7 @@ export class RouterOS {
       kv.name = m.autoName + n
     }
     if (kv.name && (m.iface ? interfaceExists(st, kv.name) : st.lists[path].some((x) => x.name === kv.name))) return 'failure: item with such name already exists'
+    if (path === 'certificate' && !kv['common-name']) return 'failure: common-name not specified'
     if (path === 'ip address' && kv.address && !kv.address.includes('/')) kv.address += '/32'
     if (path === 'ip address' && kv.address) {
       const c = parseCidr(kv.address)
@@ -925,6 +1025,72 @@ export class RouterOS {
     if (i >= 0) st.cabled[i] = newN
   }
 
+  // ---------- certificates ----------
+  certCmd(cmd, pos, kv) {
+    const st = this.st
+    const certs = st.lists.certificate
+    const lp = st.lastPrint.certificate || certs.map((c) => c['.id'])
+    const find = (n) => /^\d+$/.test(String(n)) ? certs.find((c) => c['.id'] === lp[Number(n)]) : certs.find((c) => c.name === n)
+    if (cmd === 'sign') {
+      const c = find(pos[0] || kv.numbers)
+      if (!c) return 'no such item'
+      if (c['.signed']) return 'failure: certificate already signed'
+      if (!c['common-name']) return 'failure: common-name not set'
+      if (kv.ca) {
+        const ca = find(kv.ca)
+        if (!ca) return 'input does not match any value of ca'
+        if (!ca['.signed'] || !ca['.key']) return 'failure: CA certificate must be signed and have a private key'
+        if (ca['key-usage'] && !ca['key-usage'].split(',').includes('key-cert-sign')) return 'failure: CA certificate has no key-cert-sign key usage'
+        c['.issuer'] = ca.name
+      } else c['.issuer'] = c.name
+      c['.signed'] = true; c['.key'] = true
+      c['.ca'] = c['key-usage'] ? c['key-usage'].split(',').includes('key-cert-sign') : c['.issuer'] === c.name
+      if (c['.issuer'] === c.name) c.trusted = 'yes'
+      c['.fingerprint'] = Array.from({ length: 8 }, (_, i) => ((c['.id'] * 37 + i * 11) % 256).toString(16).padStart(2, '0')).join('')
+      return '  progress: done'
+    }
+    if (cmd === 'import') {
+      const fn = kv['file-name']
+      if (!fn) return 'failure: file-name not specified'
+      const f = st.files.find((x) => x.name === fn)
+      if (!f) return 'failure: no such file'
+      let certsN = 0, keys = 0
+      if (f.cert) {
+        if (find(fn + '_0')) return 'failure: certificate with the same name already exists'
+        const it = { '.id': st.seq++, name: fn + '_0', 'common-name': f.cert.cn, 'subject-alt-name': f.cert.san || '', 'key-usage': f.cert.ku || '', trusted: f.cert.ca ? 'yes' : 'no', disabled: 'no', '.signed': true, '.ca': !!f.cert.ca, '.issuer': f.cert.ca ? fn + '_0' : 'external CA', '.keyId': f.cert.keyId, '.fingerprint': f.cert.fp || '9f3c51d2a07be844' }
+        certs.push(it); certsN = 1
+      }
+      if (f.key) {
+        const c = certs.find((x) => x['.keyId'] === f.key)
+        if (c) { c['.key'] = true; keys = 1 }
+      }
+      return `     certificates-imported: ${certsN}\n     private-keys-imported: ${keys}\n            files-imported: 1\n       decryption-failures: 0\n  keys-with-no-certificate: ${f.key && !keys ? 1 : 0}`
+    }
+    if (cmd === 'export-certificate') {
+      const c = find(pos[0] || kv.numbers)
+      if (!c) return 'no such item'
+      if (!c['.signed']) return 'failure: certificate is not signed'
+      const type = kv.type || 'pem'
+      if (type === 'pkcs12' && (kv['export-passphrase'] || '').length < 8) return 'failure: export-passphrase must be at least 8 characters for pkcs12'
+      const files = type === 'pkcs12' ? [`cert_export_${c.name}.p12`] : [`cert_export_${c.name}.crt`, ...(kv['export-passphrase'] ? [`cert_export_${c.name}.key`] : [])]
+      for (const n of files) if (!st.files.some((x) => x.name === n)) st.files.push({ name: n, type: '.' + n.split('.').pop() + ' file', of: c.name, passphrase: !!kv['export-passphrase'] })
+      return ''
+    }
+    return ''
+  }
+
+  printCerts() {
+    const st = this.st
+    const list = st.lists.certificate
+    st.lastPrint.certificate = list.map((x) => x['.id'])
+    const out = ['Flags: K - PRIVATE-KEY; A - AUTHORITY; I - ISSUED, R - REVOKED; T - TRUSTED', 'Columns: NAME, COMMON-NAME, SUBJECT-ALT-NAME, ISSUER, FINGERPRINT', '#      NAME              COMMON-NAME        SUBJECT-ALT-NAME     ISSUER        FINGERPRINT']
+    list.forEach((c, n) => {
+      const f = (c['.key'] ? 'K' : ' ') + (c['.signed'] && c['.ca'] ? 'A' : ' ') + (c['.signed'] && c['.issuer'] !== c.name ? 'I' : ' ') + (c.trusted === 'yes' ? 'T' : ' ')
+      out.push(pad(String(n), 2) + f + ' ' + pad(c.name, 18) + pad(c['common-name'] || '', 19) + pad(c['subject-alt-name'] || '', 21) + pad(c['.signed'] ? (c['.issuer'] === c.name ? 'self' : c['.issuer']) : '(unsigned)', 14) + (c['.fingerprint'] || ''))
+    })
+    return out.join('\n')
+  }
+
   // ---------- printing ----------
   print(path, kv, pos) {
     const st = this.st
@@ -938,6 +1104,7 @@ export class RouterOS {
     if (path === 'ip route') return this.printRoutes()
     if (path === 'interface') return this.printInterfaces()
     if (path === 'ip address') return this.printAddresses()
+    if (path === 'certificate') return this.printCerts()
     if (path === 'ip firewall connection') return 'Flags: E - expected, S - seen-reply, A - assured, C - confirmed, D - dying, F - fasttrack, s - srcnat, d - dstnat\n #          PROTOCOL SRC-ADDRESS           DST-ADDRESS           TCP-STATE\n 0  SAC  s  tcp      192.168.33.2:51000   142.250.74.46:443     established\n 1  SAC     udp      192.168.33.2:53211   192.168.33.1:53'
     if (path === 'ip neighbor') return ' # INTERFACE   ADDRESS        MAC-ADDRESS        IDENTITY     PLATFORM\n 0 ether1      22.1.1.1       48:A9:8A:00:00:01  ISP-GW       MikroTik'
     if (path === 'ppp active') {
@@ -1069,14 +1236,14 @@ export class RouterOS {
       const lines = st.services.filter((s) => (s.name === 'www-ssl' ? s.disabled !== 'yes' : s.disabled === 'yes') || s.address || s.port !== { telnet: '23', ftp: '21', www: '80', ssh: '22', 'www-ssl': '443', api: '8728', winbox: '8291', 'api-ssl': '8729' }[s.name]).map((s) => `set ${s.name}${s.disabled !== (s.name === 'www-ssl' ? 'yes' : 'no') ? ' disabled=' + s.disabled : ''}${s.address ? ' address=' + s.address : ''}${s.port !== { telnet: '23', ftp: '21', www: '80', ssh: '22', 'www-ssl': '443', api: '8728', winbox: '8291', 'api-ssl': '8729' }[s.name] ? ' port=' + s.port : ''}`)
       return lines.length ? '/ip service\n' + lines.join('\n') : ''
     }
-    if (m.kind !== 'list') return ''
+    if (m.kind !== 'list' || path === 'certificate') return ''
     const items = st.lists[path].filter((x) => !x['.builtin'] && !(path === 'user'))
     if (!items.length) return ''
     return `/${path}\n` + items.map((it) => 'add ' + fmt(it, m.defaults || {})).join('\n')
   }
 
   exportAll(kv) {
-    const order = ['interface bridge', 'interface wireless', 'interface', 'interface vlan', 'interface pppoe-client', 'interface pptp-client', 'interface l2tp-client', 'interface list', 'interface wireless security-profiles', 'interface wireless access-list', 'interface wireless connect-list', 'ip pool', 'ip dhcp-server', 'interface pppoe-server server', 'ppp profile', 'queue type', 'queue simple', 'interface bridge port', 'ip neighbor discovery-settings', 'interface list member', 'interface pptp-server server', 'interface l2tp-server server', 'interface sstp-server server', 'ip address', 'ip cloud', 'ip dhcp-client', 'ip dhcp-server lease', 'ip dhcp-server network', 'ip dns', 'ip dns static', 'ip arp', 'ip firewall address-list', 'ip firewall filter', 'ip firewall mangle', 'ip firewall nat', 'ip route', 'ip service', 'ppp secret', 'snmp', 'snmp community', 'system clock', 'system identity', 'system note', 'system ntp client', 'system ntp server', 'system logging', 'system scheduler', 'system script', 'tool mac-server', 'tool mac-server mac-winbox', 'tool bandwidth-server', 'tool netwatch', 'tool graphing interface', 'tool e-mail']
+    const order = ['interface bridge', 'interface wireless', 'interface', 'interface vlan', 'interface pppoe-client', 'interface pptp-client', 'interface l2tp-client', 'interface list', 'interface wireless security-profiles', 'interface wireless access-list', 'interface wireless connect-list', 'ip pool', 'ip dhcp-server', 'interface pppoe-server server', 'ppp profile', 'queue type', 'queue simple', 'interface bridge port', 'ip neighbor discovery-settings', 'interface list member', 'interface pptp-server server', 'interface l2tp-server server', 'interface sstp-server server', 'ip ipsec mode-config', 'ip ipsec policy group', 'ip ipsec profile', 'ip ipsec peer', 'ip ipsec proposal', 'ip address', 'ip cloud', 'ip dhcp-client', 'ip dhcp-server lease', 'ip dhcp-server network', 'ip dns', 'ip dhcp-server alert', 'ip dns static', 'ip arp', 'ip firewall address-list', 'ip firewall filter', 'ip firewall mangle', 'ip firewall nat', 'ip firewall raw', 'ip firewall connection tracking', 'ip ipsec identity', 'ip ipsec policy', 'ip route', 'ip service', 'ip settings', 'ip ssh', 'ppp secret', 'snmp', 'snmp community', 'system clock', 'system identity', 'system note', 'system ntp client', 'system ntp server', 'system logging', 'system scheduler', 'system script', 'tool mac-server', 'tool mac-server mac-winbox', 'tool bandwidth-server', 'tool netwatch', 'tool graphing interface', 'tool e-mail']
     const parts = order.map((p) => this.exportMenu(p, kv)).filter(Boolean)
     return `# 2026-10-14 12:00:00 by RouterOS 7.16.2\n# software id = 7XYZ-AB12\n#\n# model = RB941-2nD\n# serial number = HCQ08XYZ123\n` + parts.join('\n')
   }
@@ -1200,13 +1367,29 @@ export class RouterOS {
     if (['interface', 'in-interface', 'out-interface', 'master-interface'].includes(k)) return allInterfaces(st).map((i) => i.name)
     if (k === 'bridge') return st.lists['interface bridge'].map((b) => b.name)
     if (k.endsWith('interface-list') || (k === 'list' && path === 'interface list member')) return st.lists['interface list'].map((l) => l.name)
-    if (k === 'chain') return path === 'ip firewall nat' ? ['srcnat', 'dstnat'] : path === 'ip firewall mangle' ? ['prerouting', 'input', 'forward', 'output', 'postrouting'] : CHAINS_FILTER
-    if (k === 'action') return path === 'ip firewall nat' ? ACT_NAT : path === 'ip firewall mangle' ? ACT_MANGLE : ACT_FILTER
-    if (k === 'protocol') return ['tcp', 'udp', 'icmp', 'gre']
+    if (k === 'chain') return path === 'ip firewall nat' ? ['srcnat', 'dstnat'] : path === 'ip firewall mangle' ? ['prerouting', 'input', 'forward', 'output', 'postrouting'] : path === 'ip firewall raw' ? ['prerouting', 'output'] : CHAINS_FILTER
+    if (k === 'action') return path === 'ip firewall nat' ? ACT_NAT : path === 'ip firewall mangle' ? ACT_MANGLE : path === 'ip firewall raw' ? ACT_RAW : path === 'ip ipsec policy' ? ['encrypt', 'none', 'discard'] : ACT_FILTER
+    if (k === 'protocol') return ['tcp', 'udp', 'icmp', 'gre', 'ipsec-esp', 'ipsec-ah']
+    if (k === 'certificate' || k === 'remote-certificate' || k === 'ca') return st.lists.certificate.map((c) => c.name)
+    if (k === 'key-usage') return KEY_USAGE
+    if (k === 'use-ipsec') return ['no', 'yes', 'required']
+    if (k === 'tls-version') return ['any', 'only-1.2', 'only-1.3']
+    if (k === 'forwarding-enabled') return ['no', 'local', 'remote', 'both']
+    if (k === 'rp-filter') return ['no', 'strict', 'loose']
+    if (k === 'exchange-mode') return ['ike2', 'main', 'aggressive']
+    if (k === 'auth-method') return ['pre-shared-key', 'digital-signature', 'eap', 'eap-radius']
+    if (k === 'generate-policy') return ['no', 'port-override', 'port-strict']
+    if (k === 'peer') return st.lists['ip ipsec peer'].map((x) => x.name)
+    if (k === 'mode-config') return st.lists['ip ipsec mode-config'].map((x) => x.name)
+    if (k === 'policy-template-group' || (k === 'group' && path === 'ip ipsec policy')) return st.lists['ip ipsec policy group'].map((x) => x.name)
+    if (k === 'proposal') return st.lists['ip ipsec proposal'].map((x) => x.name)
+    if (k === 'type' && path === 'certificate') return ['pem', 'pkcs12']
+    if (k === 'file-name') return st.files.map((f) => f.name)
     if (k === 'connection-state') return ['new', 'established', 'related', 'invalid', 'established,related']
     if (k === 'mode') return path.includes('security') ? ['none', 'dynamic-keys', 'static-keys-required'] : ['station', 'station-bridge', 'ap-bridge', 'bridge']
     if (k === 'group') return st.lists['user group'].map((g) => g.name)
     if (k === 'address-pool') return st.lists['ip pool'].map((p) => p.name)
+    if (k === 'profile' && path === 'ip ipsec peer') return st.lists['ip ipsec profile'].map((x) => x.name)
     if (k === 'profile' || k === 'default-profile') return st.lists['ppp profile'].map((p) => p.name)
     if (k === 'security-profile') return st.lists['interface wireless security-profiles'].map((p) => p.name)
     if (k === 'kind') return ['pcq', 'pfifo', 'bfifo', 'sfq', 'red']
@@ -1224,7 +1407,9 @@ const HELP = `RouterOS simulator: supported menus
   /interface wireless [security-profiles access-list connect-list]
   /interface pppoe-client  /interface pppoe-server server  /interface pptp-server server  /interface pptp-client
   /ip address  /ip route  /ip dhcp-client  /ip dhcp-server [network lease]  /ip pool
-  /ip dns [static]  /ip arp  /ip firewall filter|nat|mangle|address-list  /ip service  /ip cloud
+  /ip dns [static]  /ip arp  /ip firewall filter|nat|mangle|raw|address-list  /ip service  /ip ssh  /ip settings  /ip cloud
+  /certificate (add, sign, import, export-certificate)  /interface l2tp-server server  /interface sstp-server server
+  /ip ipsec profile|proposal|policy [group]|peer|identity|mode-config|active-peers|installed-sa  /ip dhcp-server alert
   /queue simple  /queue type  /ppp profile  /ppp secret  /user
   /system identity|note|clock|ntp client|resource|routerboard|package|backup|reboot|reset-configuration
   /tool netwatch|mac-server|bandwidth-server|torch|profile  /snmp

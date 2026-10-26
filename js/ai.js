@@ -209,29 +209,31 @@ export function moduleMastery(m, i, data, counts, LABS) {
   return { read, quiz, labs, exam, score: Math.round((parts.reduce((a, [v, x]) => a + v * x, 0) / w) * 100) }
 }
 
-export function studyPlan(MODULES, LABS, data, counts) {
+// opt.base is the course URL prefix ('' for MTCNA, '/mtcse'); opt.trouble = the course has the troubleshooting lab
+export function studyPlan(MODULES, LABS, data, counts, opt = {}) {
+  const B = '#' + (opt.base || '')
   const ms = MODULES.map((m, i) => ({ m, i, ...moduleMastery(m, i, data, counts, LABS) }))
   const steps = []
   const next = (x) => {
     const { m } = x
     const firstUnread = [...Array(counts[x.i]).keys()].find((k) => !data.lessons[m.id + ':' + k])
-    if (x.read < 1 && firstUnread !== undefined) return { href: `#/module/${m.id}/lesson/${firstUnread}`, icon: '📖', text: T(`Read "${m.title}", lesson ${firstUnread + 1}`, `Прочитать «${m.title}», урок ${firstUnread + 1}`), why: T(`${Math.round(x.read * 100)}% of the module read`, `модуль прочитан на ${Math.round(x.read * 100)}%`) }
-    if (x.quiz < 0.8) return { href: `#/module/${m.id}/quiz`, icon: '📝', text: T(`Take the "${m.title}" quiz`, `Пройти тест «${m.title}»`), why: data.quiz[m.id] !== undefined ? T(`best score ${data.quiz[m.id]}%, need 80%`, `лучший результат ${data.quiz[m.id]}%, нужно 80%`) : T('theory read, check yourself', 'теория прочитана, проверьте себя') }
-    if (x.labs !== null && x.labs < 1) { const l = LABS.find((y) => m.labs.includes(y.id) && !data.labs[y.id]); return { href: `#/lab/${l.id}`, icon: '🧪', text: T(`Do the lab "${l.title}"`, `Выполнить лабу «${l.title}»`), why: T('theory and quiz are done, practise it', 'теория и тест пройдены, пора на практику') } }
+    if (x.read < 1 && firstUnread !== undefined) return { href: `${B}/module/${m.id}/lesson/${firstUnread}`, icon: '📖', text: T(`Read "${m.title}", lesson ${firstUnread + 1}`, `Прочитать «${m.title}», урок ${firstUnread + 1}`), why: T(`${Math.round(x.read * 100)}% of the module read`, `модуль прочитан на ${Math.round(x.read * 100)}%`) }
+    if (x.quiz < 0.8) return { href: `${B}/module/${m.id}/quiz`, icon: '📝', text: T(`Take the "${m.title}" quiz`, `Пройти тест «${m.title}»`), why: data.quiz[m.id] !== undefined ? T(`best score ${data.quiz[m.id]}%, need 80%`, `лучший результат ${data.quiz[m.id]}%, нужно 80%`) : T('theory read, check yourself', 'теория прочитана, проверьте себя') }
+    if (x.labs !== null && x.labs < 1) { const l = LABS.find((y) => m.labs.includes(y.id) && !data.labs[y.id]); return { href: `${B}/lab/${l.id}`, icon: '🧪', text: T(`Do the lab "${l.title}"`, `Выполнить лабу «${l.title}»`), why: T('theory and quiz are done, practise it', 'теория и тест пройдены, пора на практику') } }
     return null
   }
   // 1) the next action in the first module (course order) that is not finished
   const cur = ms.find((x) => next(x))
   if (cur) steps.push(next(cur))
   // 2) modules the last exam showed as weak
-  for (const x of ms.filter((y) => y.exam !== null && y.exam < 0.6 && y !== cur).sort((a, b) => a.exam - b.exam).slice(0, 2)) steps.push({ href: `#/module/${x.m.id}/quiz`, icon: '🔁', text: T(`Revise "${x.m.title}"`, `Повторить «${x.m.title}»`), why: T(`${Math.round(x.exam * 100)}% right on the last exam`, `на последнем экзамене верно ${Math.round(x.exam * 100)}%`) })
+  for (const x of ms.filter((y) => y.exam !== null && y.exam < 0.6 && y !== cur).sort((a, b) => a.exam - b.exam).slice(0, 2)) steps.push({ href: `${B}/module/${x.m.id}/quiz`, icon: '🔁', text: T(`Revise "${x.m.title}"`, `Повторить «${x.m.title}»`), why: T(`${Math.round(x.exam * 100)}% right on the last exam`, `на последнем экзамене верно ${Math.round(x.exam * 100)}%`) })
   // 3) a started module that still needs its quiz or lab
   const started = ms.find((x) => x !== cur && (x.read > 0 || x.quiz > 0) && next(x) && !steps.some((st) => st.href.includes('/' + x.m.id + '/')))
   if (steps.length < 3 && started) steps.push(next(started))
-  if (steps.length < 3) steps.push(Object.keys(data.labs).length
+  if (steps.length < 3) steps.push(Object.keys(data.labs).length && opt.trouble !== false
     ? { href: '#/troubleshoot', icon: '🛠️', text: T('Fix a generated broken network', 'Починить сгенерированную сломанную сеть'), why: T('troubleshooting is what the exam and real work test', 'именно поиск неисправностей проверяют экзамен и реальная работа') }
-    : { href: '#/terminal', icon: '⌨️', text: T('Try the RouterOS terminal', 'Попробовать терминал RouterOS'), why: T('the tutor explains every error you make', 'тьютор объясняет каждую ошибку') })
-  if (steps.length < 3 && !cur) steps.push({ href: '#/exam', icon: '🎓', text: T('Take the final exam', 'Сдать финальный экзамен'), why: T('every module is finished', 'все модули пройдены') })
+    : { href: `${B}/terminal`, icon: '⌨️', text: T('Try the RouterOS terminal', 'Попробовать терминал RouterOS'), why: T('the tutor explains every error you make', 'тьютор объясняет каждую ошибку') })
+  if (steps.length < 3 && !cur) steps.push({ href: `${B}/exam`, icon: '🎓', text: T('Take the final exam', 'Сдать финальный экзамен'), why: T('every module is finished', 'все модули пройдены') })
   const weakest = ms.filter((x) => x.read > 0 || x.quiz > 0).sort((a, b) => a.score - b.score)[0]
   return { steps, mastery: ms, weakest }
 }
@@ -288,9 +290,9 @@ export function exportConfig(st) {
 }
 
 // Ask the Claude tutor through /api/tutor; falls back to the built-in answer.
-export async function askTutor(question, { st, lab, lastError } = {}) {
+export async function askTutor(question, { st, lab, lastError, course } = {}) {
   const ctx = {
-    question: String(question).slice(0, 1000), lang: LANG,
+    question: String(question).slice(0, 1000), lang: LANG, course: course || 'MTCNA',
     config: st ? exportConfig(st).slice(0, 8000) : '',
     laptop: st ? (() => { const L = laptopState(st), i = laptopInternet(st); return { ip: L.ip, gw: L.gw, dns: L.dns, internet: i.ok, reason: i.reason || '' } })() : null,
     lab: lab ? { title: lab.title, tasks: lab.tasks.map((t, k) => ({ t: t.t, done: !!lab.done?.[k] })) } : null,

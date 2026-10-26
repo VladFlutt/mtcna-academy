@@ -12,7 +12,7 @@ const L = (st, p) => st.lists[p] || []
 const S = (st, p) => st.singletons[p] || {}
 const svc = (st, n) => st.services.find((s) => s.name === n)
 
-function run(st, cmds) {
+export function run(st, cmds) {
   const r = new RouterOS(st)
   for (const c of cmds) r.exec(c)
   return r.st
@@ -216,7 +216,7 @@ export const LABS = [
 ]
 
 export function makeLabState(lab) {
-  const st = STARTS[lab.start]()
+  const st = (lab.init || STARTS[lab.start])()
   if (lab.setup) lab.setup(st)
   return st
 }

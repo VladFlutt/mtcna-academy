@@ -10,6 +10,9 @@ import { explainError, auditConfig, auditScore, askTutor, makeTroubleshoot, trou
 import { COURSES } from './courses.js'
 import { GLOSSARY, CATS } from './glossary.js'
 import { initTerms } from './terms.js'
+import { SE_MODULES, SE_EXAM } from './mtcse/data.js'
+import { SE_LABS, START_LABEL, seTerminalStart } from './mtcse/labs.js'
+import { SE_SIMS } from './mtcse/sims.js'
 
 const APP = T('Academy MikroTik', 'Академия MikroTik')
 
@@ -29,6 +32,16 @@ if (LANG === 'ru') {
   }
 }
 
+// ---------- courses with content ----------
+// Each course has its own modules, labs, simulators and exam; MTCNA keeps its original short URLs (#/module/...),
+// other courses live under their own prefix (#/mtcse/module/...).
+const NA = { id: 'mtcna', code: 'MTCNA', base: '', home: '#/mtcna', modules: MODULES, labs: LABS, sims: SIMS, exam: EXAM, examKey: 'exams', modsKey: 'examMods', trouble: true }
+const SE = { id: 'mtcse', code: 'MTCSE', base: '/mtcse', home: '#/mtcse', modules: SE_MODULES, labs: SE_LABS, sims: [...SE_SIMS, SIMS.find((x) => x.id === 'firewall')], exam: SE_EXAM, examKey: 'exams_mtcse', modsKey: 'examMods_mtcse', trouble: false, startLabel: START_LABEL }
+const COURSE_DATA = { mtcna: NA, mtcse: SE }
+const ALL_SIMS = [...SIMS, ...SE_SIMS]
+const href = (c, p) => '#' + c.base + p
+let CUR = NA
+
 const REASONS_RU = [
   ['cable/port down', 'кабель/порт не подключён'], ['no DHCP server on ', 'нет DHCP-сервера на '], ['DHCP server interface has no IP address', 'у интерфейса DHCP-сервера нет IP-адреса'],
   ['DHCP server has no address pool', 'у DHCP-сервера нет пула адресов'], ['bad pool range', 'неверный диапазон пула'], ['no DHCP network for ', 'нет DHCP network для '],
@@ -38,7 +51,7 @@ const REASONS_RU = [
   ['laptop gateway is wrong or missing', 'шлюз ноутбука неверный или не задан'], ['router has no route to ', 'у маршрутизатора нет маршрута до '],
   ['router WAN is not connected to the ISP', 'WAN маршрутизатора не подключён к провайдеру'], ['no srcnat: private source address is not translated', 'нет srcnat: частный адрес источника не транслируется'],
   ['laptop has no DNS server', 'у ноутбука нет DNS-сервера'], ['router DNS: allow-remote-requests=no', 'DNS маршрутизатора: allow-remote-requests=no'],
-  ['DNS to router blocked', 'DNS к маршрутизатору заблокирован'], ['router cannot resolve names (no DNS servers?)', 'маршрутизатор не разрешает имена (нет DNS-серверов?)'],
+  ['DNS to router blocked', 'DNS к маршрутизатору заблокирован'], ['dropped by firewall raw', 'отброшено firewall raw'], ['router cannot resolve names (no DNS servers?)', 'маршрутизатор не разрешает имена (нет DNS-серверов?)'],
   [' unreachable: ', ' недоступен: '], ['DNS server ', 'DNS-сервер '],
 ]
 const trReason = (s) => LANG === 'ru' ? REASONS_RU.reduce((a, [en, ru]) => a.split(en).join(ru), String(s || '')) : s
@@ -50,6 +63,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const KEY = 'mtcna-academy-v1'
 const store = {
   data: { lessons: {}, quiz: {}, labs: {}, exams: [], theme: null },
+  // course view of the progress: the exam history is kept per course
+  view(c) { return { ...this.data, exams: this.data[c.examKey] || [], examMods: this.data[c.modsKey] || {} } },
   load() { try { Object.assign(this.data, JSON.parse(localStorage.getItem(KEY) || '{}')) } catch {} },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.data)) } catch {} },
 }
@@ -84,11 +99,11 @@ function moduleProgress(mod, count) {
 
 // ---------- layout ----------
 const COURSE_KEYS = ['home', 'labs', 'terminal', 'trouble', 'sims', 'exam', 'cheat']
-function shell(active, inner) {
+function shell(active, inner, c = CUR) {
   const inCourse = COURSE_KEYS.includes(active)
-  const top = [['#/', T('Courses', 'Курсы'), active === 'academy' || active === 'course'], ['#/mtcna', 'MTCNA', inCourse], ['#/glossary', T('Glossary', 'Словарь'), active === 'glossary']]
-  const sub = [['#/mtcna', T('Course', 'Курс'), 'home'], ['#/labs', T('Labs', 'Лабы'), 'labs'], ['#/terminal', T('Terminal', 'Терминал'), 'terminal'], ['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble'], ['#/sims', T('Simulators', 'Симуляторы'), 'sims'], ['#/exam', T('Final exam', 'Экзамен'), 'exam'], ['#/cheatsheet', T('Cheat sheet', 'Шпаргалка'), 'cheat']]
-  document.title = inCourse ? `MTCNA · ${APP}` : active === 'glossary' ? `${T('Glossary', 'Словарь')} · ${APP}` : APP
+  const top = [['#/', T('Courses', 'Курсы'), active === 'academy' || active === 'course'], ['#/mtcna', 'MTCNA', inCourse && c === NA], ['#/mtcse', 'MTCSE', inCourse && c === SE], ['#/glossary', T('Glossary', 'Словарь'), active === 'glossary']]
+  const sub = [[c.home, T('Course', 'Курс'), 'home'], [href(c, '/labs'), T('Labs', 'Лабы'), 'labs'], [href(c, '/terminal'), T('Terminal', 'Терминал'), 'terminal'], ...(c.trouble ? [['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble']] : []), [href(c, '/sims'), T('Simulators', 'Симуляторы'), 'sims'], [href(c, '/exam'), T('Final exam', 'Экзамен'), 'exam'], [href(c, '/cheatsheet'), T('Cheat sheet', 'Шпаргалка'), 'cheat']]
+  document.title = inCourse ? `${c.code} · ${APP}` : active === 'glossary' ? `${T('Glossary', 'Словарь')} · ${APP}` : APP
   return `
   <header class="top">
     <a href="#/" class="brand"><span class="logo">M</span><span>${T('Academy <b>MikroTik</b>', 'Академия <b>MikroTik</b>')}</span></a>
@@ -96,25 +111,25 @@ function shell(active, inner) {
     <button class="theme lang" id="lang" title="${T('Русский язык', 'English language')}" aria-label="${T('Switch to Russian', 'Switch to English')}">${T('RU', 'EN')}</button>
     <button class="theme" id="theme" title="${T('Toggle dark mode', 'Тёмная тема')}" aria-label="${T('Toggle dark mode', 'Тёмная тема')}">◐</button>
   </header>
-  ${inCourse ? `<div class="subnav"><span class="subnav-code">MTCNA</span><nav>${sub.map(([h, t, k]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${t}</a>`).join('')}</nav></div>` : ''}
+  ${inCourse ? `<div class="subnav"><span class="subnav-code">${c.code}</span><nav>${sub.map(([h, t, k]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${t}</a>`).join('')}</nav></div>` : ''}
   <main class="wrap">${inner}</main>
   <footer class="foot">${T('Independent study platform for MikroTik certification courses. Based on the course slides and the official documentation at help.mikrotik.com. Not affiliated with or endorsed by MikroTik. Progress is stored in this browser only.', 'Независимая учебная платформа по курсам сертификации MikroTik. Основана на слайдах курсов и официальной документации help.mikrotik.com. Не связана с MikroTik и не одобрена ею. Прогресс хранится только в этом браузере.')}</footer>`
 }
 
 // ---------- pages ----------
-function readinessHtml(rd) {
+function readinessHtml(rd, c = CUR) {
   const p = rd.parts
   return `<div class="ready"><div class="ready-ring" style="--p:${rd.score}"><b>${rd.score}</b><span>/100</span></div><div><b>${T('Exam readiness', 'Готовность к экзамену')}</b><p>${esc(rd.verdict)}</p>
     <p class="muted sm">${T('Quizzes', 'Тесты')} ${p.quiz}% · ${T('labs', 'лабы')} ${p.labs}% · ${T('lessons', 'уроки')} ${p.read}%${p.exam !== null ? ` · ${T('last exams', 'последние экзамены')} ${p.exam}%` : ''}</p>
-    ${rd.weak.length && rd.score > 0 ? `<p class="sm">${T('Weakest', 'Слабее всего')}: ${rd.weak.map((w) => `<a href="#/module/${w.m.id}">${esc(w.m.title)}</a>`).join(', ')}</p>` : ''}</div></div>`
+    ${rd.weak.length && rd.score > 0 ? `<p class="sm">${T('Weakest', 'Слабее всего')}: ${rd.weak.map((w) => `<a href="${href(c, '/module/' + w.m.id)}">${esc(w.m.title)}</a>`).join(', ')}</p>` : ''}</div></div>`
 }
-function aiHomeCard(counts) {
-  const plan = studyPlan(MODULES, LABS, store.data, counts)
-  const rd = readiness(MODULES, LABS, store.data, counts)
+function aiHomeCard(counts, c) {
+  const plan = studyPlan(c.modules, c.labs, store.view(c), counts, { base: c.base, trouble: c.trouble })
+  const rd = readiness(c.modules, c.labs, store.view(c), counts)
   return `<section class="card ai-home"><div><h2>🤖 ${T('Your next steps', 'Ваши следующие шаги')}</h2><p class="muted sm">${T('The study plan adapts to your lessons, quiz scores, labs and exam results in this browser.', 'План подстраивается под ваши уроки, результаты тестов, лабы и экзамены в этом браузере.')}</p>
     <ol class="plan">${plan.steps.map((x) => `<li><a href="${x.href}">${x.icon} ${esc(x.text)}</a><span class="muted sm">${esc(x.why)}</span></li>`).join('')}</ol></div>${readinessHtml(rd)}</section>`
 }
-async function lessonCounts() { return Promise.all(MODULES.map((m) => lessons(m).then((l) => l.length).catch(() => 0))) }
+async function lessonCounts(c = CUR) { return Promise.all(c.modules.map((m) => lessons(m).then((l) => l.length).catch(() => 0))) }
 
 function troublePage() {
   const level = Math.min(3, Math.max(1, Number(sessionStorage.getItem('ts-level')) || 1))
@@ -172,15 +187,18 @@ function troublePage() {
 
 // ---------- academy ----------
 async function academyPage() {
-  const counts = await lessonCounts()
-  const total = counts.reduce((a, b) => a + b, 0)
-  const pct = Math.round(MODULES.reduce((a, m, i) => a + moduleProgress(m, counts[i]), 0) / MODULES.length)
+  const stats = {}
+  for (const cd of [NA, SE]) {
+    const counts = await lessonCounts(cd)
+    stats[cd.id] = { total: counts.reduce((a, b) => a + b, 0), pct: Math.round(cd.modules.reduce((a, m, i) => a + moduleProgress(m, counts[i]), 0) / cd.modules.length) }
+  }
+  const pct = stats.mtcna.pct
   const bestExam = Math.max(0, ...store.data.exams.map((e) => e.score))
   const cards = COURSES.map((c) => c.ready
     ? `<a class="mod" href="${c.href}"><div class="mod-top"><span class="num">${c.code}</span><span class="ico">${c.icon}</span></div>
         <h3>${esc(c.name)}</h3><p>${esc(c.desc)}</p>
-        <div class="meta"><span>${MODULES.length} ${T('modules', 'модулей')}</span><span>${total} ${T('lessons', 'уроков')}</span><span>${LABS.length} ${T('labs', 'лаб')}</span><span>${T('final exam', 'экзамен')}</span></div>
-        <div class="prog" title="${pct}%"><div style="width:${pct}%"></div></div></a>`
+        <div class="meta"><span>${COURSE_DATA[c.id].modules.length} ${T('modules', 'модулей')}</span><span>${stats[c.id].total} ${T('lessons', 'уроков')}</span><span>${COURSE_DATA[c.id].labs.length} ${T('labs', 'лаб')}</span><span>${T('final exam', 'экзамен')}</span></div>
+        <div class="prog" title="${stats[c.id].pct}%"><div style="width:${stats[c.id].pct}%"></div></div></a>`
     : `<a class="mod soon" href="#/course/${c.id}"><div class="mod-top"><span class="num">${c.code}</span><span class="ico">${c.icon}</span></div>
         <h3>${esc(c.name)}</h3><p>${esc(c.desc)}</p><div class="meta"><span class="tag soon-tag">${T('Coming soon', 'Скоро')}</span></div></a>`).join('')
   return shell('academy', `
@@ -193,6 +211,7 @@ async function academyPage() {
     <div class="stats">
       <div><b>${pct}%</b><span>${T('of MTCNA done', 'MTCNA пройдено')}</span></div>
       <div><b>${bestExam ? bestExam + '%' : '–'}</b><span>${T('best MTCNA exam', 'лучший экзамен MTCNA')}</span></div>
+      <div><b>${stats.mtcse.pct}%</b><span>${T('of MTCSE done', 'MTCSE пройдено')}</span></div>
       <div><b>${GLOSSARY.length}</b><span>${T('terms in the glossary', 'терминов в словаре')}</span></div>
     </div>
   </section>
@@ -254,15 +273,21 @@ function glossaryPage(focus) {
   } }
 }
 
-async function homePage() {
-  const counts = await Promise.all(MODULES.map((m) => lessons(m).then((l) => l.length).catch(() => 0)))
+const HERO = {
+  mtcna: () => ({ title: T('Learn MTCNA by doing', 'Изучайте MTCNA на практике'), text: T('Ten modules that follow the official MikroTik Certified Network Associate outline: theory from the course slides and help.mikrotik.com, a RouterOS terminal with guided labs, network simulators, a quiz for every module, and a timed final exam.', 'Десять модулей по официальной программе MikroTik Certified Network Associate: теория из слайдов курса и help.mikrotik.com, терминал RouterOS с лабораторными работами, сетевые симуляторы, тест к каждому модулю и финальный экзамен на время.'), first: 'intro', name: 'MTCNA' }),
+  mtcse: () => ({ title: T('MTCSE: secure your MikroTik', 'MTCSE: защитите свой MikroTik'), text: T('Six modules that follow the official MikroTik Certified Security Engineer outline and the whole set of course slides (Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, Secure Tunnels), with the RouterOS details filled in from help.mikrotik.com. Every term is explained for beginners, every lab is checked by replaying real attacks against your configuration, and the quizzes and exam keep the difficulty of the real test. MTCNA knowledge is assumed.', 'Шесть модулей по официальной программе MikroTik Certified Security Engineer и по всему набору слайдов курса (Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, Secure Tunnels), с деталями RouterOS по help.mikrotik.com. Каждый термин объяснён для начинающих, каждая лаба проверяется воспроизведением настоящих атак против вашей конфигурации, а тесты и экзамен сохраняют сложность настоящего теста. Предполагаются знания MTCNA.'), first: 'se-intro', name: 'MTCSE' }),
+}
+
+async function homePage(c = CUR) {
+  const counts = await lessonCounts(c)
   const totalLessons = counts.reduce((a, b) => a + b, 0)
-  const doneLessons = Object.keys(store.data.lessons).length
-  const labsDone = Object.keys(store.data.labs).filter((k) => store.data.labs[k]).length
-  const bestExam = Math.max(0, ...store.data.exams.map((e) => e.score))
-  const cards = MODULES.map((m, i) => {
+  const doneLessons = Object.keys(store.data.lessons).filter((k) => c.modules.some((m) => k.startsWith(m.id + ':'))).length
+  const labsDone = c.labs.filter((l) => store.data.labs[l.id]).length
+  const bestExam = Math.max(0, ...store.view(c).exams.map((e) => e.score))
+  const hero = HERO[c.id]()
+  const cards = c.modules.map((m, i) => {
     const p = moduleProgress(m, counts[i])
-    return `<a class="mod" href="#/module/${m.id}">
+    return `<a class="mod" href="${href(c, '/module/' + m.id)}">
       <div class="mod-top"><span class="num">${m.num}</span><span class="ico">${m.icon}</span></div>
       <h3>${esc(m.title)}</h3><p>${esc(m.summary)}</p>
       <div class="meta"><span>${counts[i]} ${T('lessons', 'уроков')}</span><span>${m.quiz.length} ${T('questions', 'вопросов')}</span>${m.labs.length ? `<span>${m.labs.length} ${T('lab' + (m.labs.length > 1 ? 's' : ''), m.labs.length > 1 ? 'лабы' : 'лаба')}</span>` : ''}</div>
@@ -272,17 +297,17 @@ async function homePage() {
   return shell('home', `
   <section class="hero">
     <div>
-      <h1>${T('Learn MTCNA by doing', 'Изучайте MTCNA на практике')}</h1>
-      <p>${T('Ten modules that follow the official MikroTik Certified Network Associate outline: theory from the course slides and help.mikrotik.com, a RouterOS terminal with guided labs, network simulators, a quiz for every module, and a timed final exam.', 'Десять модулей по официальной программе MikroTik Certified Network Associate: теория из слайдов курса и help.mikrotik.com, терминал RouterOS с лабораторными работами, сетевые симуляторы, тест к каждому модулю и финальный экзамен на время.')}</p>
-      <div class="row wrap"><a class="btn" href="#/module/intro">${T('Start module 1', 'Начать модуль 1')}</a><a class="btn ghost" href="#/terminal">${T('Open the terminal', 'Открыть терминал')}</a></div>
+      <h1>${hero.title}</h1>
+      <p>${hero.text}</p>
+      <div class="row wrap"><a class="btn" href="${href(c, '/module/' + hero.first)}">${T('Start module 1', 'Начать модуль 1')}</a><a class="btn ghost" href="${href(c, '/terminal')}">${T('Open the terminal', 'Открыть терминал')}</a></div>
     </div>
     <div class="stats">
       <div><b>${doneLessons}/${totalLessons}</b><span>${T('lessons read', 'уроков прочитано')}</span></div>
-      <div><b>${labsDone}/${LABS.length}</b><span>${T('labs passed', 'лаб пройдено')}</span></div>
+      <div><b>${labsDone}/${c.labs.length}</b><span>${T('labs passed', 'лаб пройдено')}</span></div>
       <div><b>${bestExam ? bestExam + '%' : '–'}</b><span>${T('best exam', 'лучший экзамен')}</span></div>
     </div>
   </section>
-  ${aiHomeCard(counts)}
+  ${aiHomeCard(counts, c)}
   <h2 class="sec">${T('Modules', 'Модули')}</h2>
   <div class="mods">${cards}</div>
   <section class="card how">
@@ -291,26 +316,26 @@ async function homePage() {
       <li><b>Read</b> each lesson and mark it done. Commands in grey boxes can be copied straight into the terminal.</li>
       <li><b>Practise</b> in the module lab: the checklist turns green as your configuration works, including whether the student laptop gets Internet.</li>
       <li><b>Test yourself</b> with the module quiz. 80% or more counts as passed.</li>
-      <li><b>Take the final exam</b>: ${EXAM.questions} random questions, ${EXAM.minutes} minutes, ${EXAM.pass}% to pass, like the real MTCNA test.</li>`, `
+      <li><b>Take the final exam</b>: ${c.exam.questions} random questions, ${c.exam.minutes} minutes, ${c.exam.pass}% to pass, like the real ${c.code} test.</li>`, `
       <li><b>Читайте</b> каждый урок и отмечайте его пройденным. Команды в серых блоках можно сразу копировать в терминал.</li>
       <li><b>Практикуйтесь</b> в лабе модуля: пункты загораются зелёным, когда конфигурация работает, включая выход ноутбука студента в Интернет.</li>
       <li><b>Проверяйте себя</b> тестом модуля. 80% и выше считается сдачей.</li>
-      <li><b>Сдайте финальный экзамен</b>: ${EXAM.questions} случайных вопросов, ${EXAM.minutes} минут, ${EXAM.pass}% для сдачи, как на настоящем тесте MTCNA.</li>`)}
+      <li><b>Сдайте финальный экзамен</b>: ${c.exam.questions} случайных вопросов, ${c.exam.minutes} минут, ${c.exam.pass}% для сдачи, как на настоящем тесте ${c.code}.</li>`)}
     </ol>
     <p class="muted">${T('Want a clean start?', 'Хотите начать заново?')} <button class="link" id="reset-progress">${T('Reset all progress', 'Сбросить весь прогресс')}</button></p>
   </section>`)
 }
 
-async function modulePage(id, tab, idx) {
-  const mod = MODULES.find((m) => m.id === id)
+async function modulePage(id, tab, idx, c = CUR) {
+  const mod = c.modules.find((m) => m.id === id)
   if (!mod) return notFound()
   let ls = []
   try { ls = await lessons(mod) } catch { ls = [{ title: T('Could not load', 'Не удалось загрузить'), body: T('Lesson content failed to load. Check your connection and reload.', 'Не удалось загрузить урок. Проверьте подключение и обновите страницу.') }] }
   tab = tab || 'lesson'
   idx = Number(idx || 0)
-  const side = ls.map((l, i) => `<a href="#/module/${id}/lesson/${i}" class="${tab === 'lesson' && i === idx ? 'on' : ''}"><span class="lmark">${store.data.lessons[id + ':' + i] ? '✓' : `<span class="dot">${i + 1}</span>`}</span> ${esc(l.title)}</a>`).join('')
-  const labLinks = mod.labs.map((l) => LABS.find((x) => x.id === l)).map((l) => `<a href="#/lab/${l.id}">${store.data.labs[l.id] ? '✓' : '🧪'} ${esc(l.title)}</a>`).join('')
-  const simLinks = mod.sims.map((s) => SIMS.find((x) => x.id === s)).map((s) => `<a href="#/sim/${s.id}">${s.icon} ${esc(s.title)}</a>`).join('')
+  const side = ls.map((l, i) => `<a href="${href(c, `/module/${id}/lesson/${i}`)}" class="${tab === 'lesson' && i === idx ? 'on' : ''}"><span class="lmark">${store.data.lessons[id + ':' + i] ? '✓' : `<span class="dot">${i + 1}</span>`}</span> ${esc(l.title)}</a>`).join('')
+  const labLinks = mod.labs.map((l) => c.labs.find((x) => x.id === l)).map((l) => `<a href="${href(c, '/lab/' + l.id)}">${store.data.labs[l.id] ? '✓' : '🧪'} ${esc(l.title)}</a>`).join('')
+  const simLinks = mod.sims.map((s) => ALL_SIMS.find((x) => x.id === s)).map((s) => `<a href="${href(c, '/sim/' + s.id)}">${s.icon} ${esc(s.title)}</a>`).join('')
   const q = store.data.quiz[id]
   let body = ''
   if (tab === 'lesson') {
@@ -318,9 +343,9 @@ async function modulePage(id, tab, idx) {
     const done = !!store.data.lessons[id + ':' + idx]
     body = `<article class="lesson"><div class="crumb">${T('Module', 'Модуль')} ${mod.num} · ${T(`Lesson ${idx + 1} of ${ls.length}`, `Урок ${idx + 1} из ${ls.length}`)}</div><h1>${esc(l.title)}</h1>${renderMarkdown(l.body)}</article>
       <div class="lesson-nav">
-        ${idx > 0 ? `<a class="btn ghost" href="#/module/${id}/lesson/${idx - 1}">← ${T('Previous', 'Назад')}</a>` : '<span></span>'}
+        ${idx > 0 ? `<a class="btn ghost" href="${href(c, `/module/${id}/lesson/${idx - 1}`)}">← ${T('Previous', 'Назад')}</a>` : '<span></span>'}
         <button class="btn ${done ? 'ghost' : ''}" id="mark" data-k="${id}:${idx}">${done ? T('✓ Done', '✓ Пройдено') : T('Mark as done', 'Отметить пройденным')}</button>
-        ${idx < ls.length - 1 ? `<a class="btn ghost" href="#/module/${id}/lesson/${idx + 1}">${T('Next', 'Далее')} →</a>` : `<a class="btn ghost" href="#/module/${id}/quiz">${T('Take the quiz', 'Пройти тест')} →</a>`}
+        ${idx < ls.length - 1 ? `<a class="btn ghost" href="${href(c, `/module/${id}/lesson/${idx + 1}`)}">${T('Next', 'Далее')} →</a>` : `<a class="btn ghost" href="${href(c, `/module/${id}/quiz`)}">${T('Take the quiz', 'Пройти тест')} →</a>`}
       </div>`
   } else if (tab === 'quiz') {
     body = `<div id="quiz"></div>`
@@ -329,11 +354,11 @@ async function modulePage(id, tab, idx) {
   <div class="module">
     <aside class="side">
       <div class="side-head"><span class="ico">${mod.icon}</span><div><small>${T('Module', 'Модуль')} ${mod.num}</small><b>${esc(mod.title)}</b></div></div>
-      <div class="src">${T('Source', 'Источник')}: ${mod.source === 'slides' ? T('course slides', 'слайды курса') : T('course slides + MikroTik docs', 'слайды курса + документация MikroTik')}</div>
+      <div class="src">${T('Source', 'Источник')}: ${mod.source === 'slides' ? T('course slides', 'слайды курса') : mod.source === 'docs' ? T('MikroTik docs (help.mikrotik.com)', 'документация MikroTik (help.mikrotik.com)') : T('course slides + MikroTik docs', 'слайды курса + документация MikroTik')}</div>
       <h4>${T('Lessons', 'Уроки')}</h4><nav>${side}</nav>
       ${labLinks ? `<h4>${T('Labs', 'Лабы')}</h4><nav>${labLinks}</nav>` : ''}
       ${simLinks ? `<h4>${T('Simulators', 'Симуляторы')}</h4><nav>${simLinks}</nav>` : ''}
-      <h4>${T('Check', 'Проверка')}</h4><nav><a href="#/module/${id}/quiz" class="${tab === 'quiz' ? 'on' : ''}">📝 ${T('Module quiz', 'Тест модуля')} ${q !== undefined ? `<span class="score ${q >= 80 ? 'good' : ''}">${q}%</span>` : ''}</a></nav>
+      <h4>${T('Check', 'Проверка')}</h4><nav><a href="${href(c, `/module/${id}/quiz`)}" class="${tab === 'quiz' ? 'on' : ''}">📝 ${T('Module quiz', 'Тест модуля')} ${q !== undefined ? `<span class="score ${q >= 80 ? 'good' : ''}">${q}%</span>` : ''}</a></nav>
     </aside>
     <section class="content">${body}</section>
   </div>`)
@@ -457,7 +482,7 @@ function bindTutor(el, ctx) {
   el.querySelector('.ai-ask').onsubmit = (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) { ask(q); e.target.q.value = '' } }
   const ask = async (q) => {
     show(`<p class="ai-q">${esc(q)}</p><p class="muted">${T('Thinking…', 'Думаю…')}</p>`)
-    const c = ctx()
+    const c = { ...ctx(), course: CUR.code }
     const r = await askTutor(q, c)
     const body = r.source === 'claude' ? fences(r.text) : cmdBlocks(trReason(r.text))
     show(`<p class="ai-q">${esc(q)}</p><div class="ai-a">${renderMarkdown(body)}</div><p class="ai-src">${r.source === 'claude' ? T('Answer by Claude, based on your current config. Check it in the terminal.', 'Ответ Claude на основе вашей текущей конфигурации. Проверьте его в терминале.') : T('Built-in tutor (offline rules). The Claude tutor answers when the site has an API key configured.', 'Встроенный тьютор (правила, без сети). Claude отвечает, когда на сайте настроен ключ API.')}</p>`)
@@ -470,35 +495,38 @@ function bindCopy(scope) {
   })
 }
 
-function terminalPage() {
+function terminalPage(c = CUR) {
+  const se = c === SE
+  const start = se ? seTerminalStart : defaultConfig
+  const tries = se ? ['/ip firewall filter print', '/ip firewall raw print', '/ip service print', '/ip ssh print', '/certificate print', '/ip ipsec peer print', '/ip settings print', '/export'] : ['/interface print', '/ip address print', '/ip route print', '/ip firewall filter print', '/ping mikrotik.com count=3', '/system reset-configuration no-defaults=yes', '/export']
   const html = shell('terminal', `
   <div class="lab">
     <section class="lab-main"><div id="term"></div></section>
     <aside class="lab-side card">
       <h3>${T('Free practice', 'Свободная практика')}</h3>
-      <p class="muted">${T('A hAP-style router with the MikroTik <b>default configuration</b>. ether1 is cabled to the ISP (DHCP, PPPoE user class/class, gateway 22.1.1.1), ether2 to a laptop.', 'Маршрутизатор типа hAP с <b>конфигурацией MikroTik по умолчанию</b>. ether1 подключён к провайдеру (DHCP, PPPoE пользователь class/class, шлюз 22.1.1.1), ether2 к ноутбуку.')}</p>
+      <p class="muted">${se ? T('A router that is already online (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, laptop on ether2) with a strict stateful firewall. Try the security menus: RAW, address lists, services, SSH, certificates and IPsec. Use the AI tutor\'s audit to score your hardening.', 'Маршрутизатор уже в сети (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, ноутбук на ether2) со строгим stateful-файрволом. Попробуйте меню безопасности: RAW, address lists, сервисы, SSH, сертификаты и IPsec. Аудит ИИ-тьютора оценит вашу защиту.') : T('A hAP-style router with the MikroTik <b>default configuration</b>. ether1 is cabled to the ISP (DHCP, PPPoE user class/class, gateway 22.1.1.1), ether2 to a laptop.', 'Маршрутизатор типа hAP с <b>конфигурацией MikroTik по умолчанию</b>. ether1 подключён к провайдеру (DHCP, PPPoE пользователь class/class, шлюз 22.1.1.1), ether2 к ноутбуку.')}</p>
       <div id="lp"></div>
       ${tutorPanel()}
       <h4>${T('Try', 'Попробуйте')}</h4>
-      <div class="tries">${['/interface print', '/ip address print', '/ip route print', '/ip firewall filter print', '/ping mikrotik.com count=3', '/system reset-configuration no-defaults=yes', '/export'].map((c) => `<button class="chip mono" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-      <button class="btn ghost" id="t-reset">${T('Reset to default config', 'Сбросить к конфигурации по умолчанию')}</button>
+      <div class="tries">${tries.map((x) => `<button class="chip mono" data-c="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+      <button class="btn ghost" id="t-reset">${se ? T('Reset the router', 'Сбросить маршрутизатор') : T('Reset to default config', 'Сбросить к конфигурации по умолчанию')}</button>
     </aside>
   </div>`)
   return { html, after: () => {
-    let ros = new RouterOS(defaultConfig())
+    let ros = new RouterOS(start())
     const upd = () => { document.getElementById('lp').innerHTML = laptopPanel(ros.st) }
     let t = mountTerminal(document.getElementById('term'), ros, upd)
     upd(); t.focus()
     document.querySelector('.tries').onclick = (e) => { if (e.target.dataset.c) { t.runLine(e.target.dataset.c); t.focus() } }
-    document.getElementById('t-reset').onclick = () => { ros = new RouterOS(defaultConfig()); t = mountTerminal(document.getElementById('term'), ros, upd); upd(); t.focus() }
+    document.getElementById('t-reset').onclick = () => { ros = new RouterOS(start()); t = mountTerminal(document.getElementById('term'), ros, upd); upd(); t.focus() }
     bindTutor(document.querySelector('.ai'), () => ({ st: ros.st, lastError: t.lastError }))
   } }
 }
 
-function labsPage() {
-  const byMod = MODULES.filter((m) => m.labs.length).map((m) => `<div class="lab-group"><h3>${m.icon} ${T('Module', 'Модуль')} ${m.num}: ${esc(m.title)}</h3>
-    ${m.labs.map((id) => LABS.find((l) => l.id === id)).map((l) => `<a class="lab-card" href="#/lab/${l.id}"><b>${store.data.labs[l.id] ? '✅' : '🧪'} ${esc(l.title)}</b><span>${esc(l.intro)}</span><em>${l.tasks.length} ${T('tasks · starts from', 'заданий · старт:')} ${(LANG === 'ru' ? { default: 'конфигурация по умолчанию', empty: 'пустая конфигурация', bridged: 'bridgeLAN готов', online: 'маршрутизатор в сети', onlineDhcp: 'в сети с DHCP', dhcpWan: 'DHCP на WAN' } : { default: 'default config', empty: 'empty config', bridged: 'bridgeLAN ready', online: 'router online', onlineDhcp: 'router online with DHCP', dhcpWan: 'DHCP WAN' })[l.start]}</em></a>`).join('')}</div>`).join('')
-  return shell('labs', `<h1>${T('Guided labs', 'Лабораторные работы')}</h1><p class="lead">${T('Each lab gives you a simulated router in a known state. Type real RouterOS commands; the task list checks your configuration live. The topology follows the course: WAN ether1 to the ISP 22.1.1.0/24 (gateway and DNS 22.1.1.1), LAN bridgeLAN 192.168.33.0/24, laptop on ether2.', 'В каждой лабе у вас симулированный маршрутизатор в известном состоянии. Вводите настоящие команды RouterOS, а список заданий проверяет конфигурацию на лету. Топология как в курсе: WAN ether1 к провайдеру 22.1.1.0/24 (шлюз и DNS 22.1.1.1), LAN bridgeLAN 192.168.33.0/24, ноутбук на ether2.')}</p>
+function labsPage(c = CUR) {
+  const byMod = c.modules.filter((m) => m.labs.length).map((m) => `<div class="lab-group"><h3>${m.icon} ${T('Module', 'Модуль')} ${m.num}: ${esc(m.title)}</h3>
+    ${m.labs.map((id) => c.labs.find((l) => l.id === id)).map((l) => `<a class="lab-card" href="${href(c, '/lab/' + l.id)}"><b>${store.data.labs[l.id] ? '✅' : '🧪'} ${esc(l.title)}</b><span>${esc(l.intro)}</span><em>${l.tasks.length} ${T('tasks · starts from', 'заданий · старт:')} ${(c.startLabel || (LANG === 'ru' ? { default: 'конфигурация по умолчанию', empty: 'пустая конфигурация', bridged: 'bridgeLAN готов', online: 'маршрутизатор в сети', onlineDhcp: 'в сети с DHCP', dhcpWan: 'DHCP на WAN' } : { default: 'default config', empty: 'empty config', bridged: 'bridgeLAN ready', online: 'router online', onlineDhcp: 'router online with DHCP', dhcpWan: 'DHCP WAN' }))[l.start]}</em></a>`).join('')}</div>`).join('')
+  return shell('labs', `<h1>${T('Guided labs', 'Лабораторные работы')}</h1>${c === SE ? `<p class="lead">${T('Security labs on the same simulated network. Many tasks are checked by behaviour: the checker replays an SSH brute force, a port scan or a port knock from the Internet host 203.0.113.50 against your rules, so the order of your rules matters just like on a real router.', 'Лабы по безопасности в той же симулированной сети. Многие задания проверяются по поведению: проверка воспроизводит перебор SSH, сканирование портов или стук в порты с интернет-хоста 203.0.113.50 против ваших правил, поэтому порядок правил важен так же, как на настоящем маршрутизаторе.')}</p>` : ''}<p class="lead">${T('Each lab gives you a simulated router in a known state. Type real RouterOS commands; the task list checks your configuration live. The topology follows the course: WAN ether1 to the ISP 22.1.1.0/24 (gateway and DNS 22.1.1.1), LAN bridgeLAN 192.168.33.0/24, laptop on ether2.', 'В каждой лабе у вас симулированный маршрутизатор в известном состоянии. Вводите настоящие команды RouterOS, а список заданий проверяет конфигурацию на лету. Топология как в курсе: WAN ether1 к провайдеру 22.1.1.0/24 (шлюз и DNS 22.1.1.1), LAN bridgeLAN 192.168.33.0/24, ноутбук на ether2.')}</p>
   <div class="topo card">${TOPO_SVG}</div>${byMod}`)
 }
 
@@ -509,12 +537,12 @@ const TOPO_SVG = `<svg viewBox="0 0 640 150" class="topo-svg" role="img" aria-la
   <line x1="390" y1="75" x2="510" y2="75" class="w"/><text x="450" y="66" text-anchor="middle" class="s">ether1 (WAN)</text><text x="450" y="96" text-anchor="middle" class="s">22.1.1.x/24</text>
   <ellipse cx="570" cy="75" rx="62" ry="38" class="n"/><text x="570" y="72" text-anchor="middle" class="t">ISP</text><text x="570" y="90" text-anchor="middle" class="s">gw/DNS 22.1.1.1</text></svg>`
 
-function labPage(id) {
-  const lab = LABS.find((l) => l.id === id)
+function labPage(id, c = CUR) {
+  const lab = c.labs.find((l) => l.id === id)
   if (!lab) return notFound()
-  const mod = MODULES.find((m) => m.id === lab.module)
+  const mod = c.modules.find((m) => m.id === lab.module)
   const html = shell('labs', `
-  <div class="crumb"><a href="#/labs">${T('Labs', 'Лабы')}</a> · <a href="#/module/${mod.id}">${T('Module', 'Модуль')} ${mod.num}</a></div>
+  <div class="crumb"><a href="${href(c, '/labs')}">${T('Labs', 'Лабы')}</a> · <a href="${href(c, '/module/' + mod.id)}">${T('Module', 'Модуль')} ${mod.num}</a></div>
   <h1>${esc(lab.title)}</h1><p class="lead">${esc(lab.intro)}</p>
   <div class="lab">
     <section class="lab-main"><div id="term"></div></section>
@@ -547,44 +575,49 @@ function labPage(id) {
   } }
 }
 
-function simsPage() {
+function simsPage(c = CUR) {
   return shell('sims', `<h1>${T('Simulators', 'Симуляторы')}</h1><p class="lead">${T('Small interactive tools for the ideas that are easier to see than to read.', 'Небольшие интерактивные инструменты для идей, которые проще увидеть, чем прочитать.')}</p>
-  <div class="mods">${SIMS.map((s) => `<a class="mod" href="#/sim/${s.id}"><div class="mod-top"><span class="ico">${s.icon}</span></div><h3>${esc(s.title)}</h3><p>${esc(s.desc)}</p></a>`).join('')}</div>`)
+  <div class="mods">${c.sims.map((s) => `<a class="mod" href="${href(c, '/sim/' + s.id)}"><div class="mod-top"><span class="ico">${s.icon}</span></div><h3>${esc(s.title)}</h3><p>${esc(s.desc)}</p></a>`).join('')}</div>`)
 }
 
-function simPage(id) {
-  const s = SIMS.find((x) => x.id === id)
+function simPage(id, c = CUR) {
+  const s = ALL_SIMS.find((x) => x.id === id)
   if (!s) return notFound()
-  return { html: shell('sims', `<div class="crumb"><a href="#/sims">${T('Simulators', 'Симуляторы')}</a></div><h1>${s.icon} ${esc(s.title)}</h1><p class="lead">${esc(s.desc)}</p><div id="sim"></div>`), after: () => s.render(document.getElementById('sim')) }
+  return { html: shell('sims', `<div class="crumb"><a href="${href(c, '/sims')}">${T('Simulators', 'Симуляторы')}</a></div><h1>${s.icon} ${esc(s.title)}</h1><p class="lead">${esc(s.desc)}</p><div id="sim"></div>`), after: () => s.render(document.getElementById('sim')) }
 }
 
 // ---------- exam ----------
 let examTimer = null
-async function examPage() {
-  const rd = readiness(MODULES, LABS, store.data, await lessonCounts())
-  const hist = store.data.exams.slice(-5).reverse()
-  const html = shell('exam', `<div id="exam"><h1>${T('Final exam', 'Финальный экзамен')}</h1>
+async function examPage(c = CUR) {
+  const rd = readiness(c.modules, c.labs, store.view(c), await lessonCounts(c))
+  const hist = store.view(c).exams.slice(-5).reverse()
+  const EXAM = c.exam, MODULES = c.modules
+  const html = shell('exam', `<div id="exam"><h1>${T('Final exam', 'Финальный экзамен')} ${c.code}</h1>
     <div class="card exam-intro">
-      ${T(`<p>The real MTCNA exam is an online test in English: <b>${EXAM.questions} questions</b>, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} questions in the course, at least two from every module.</p>
+      ${c === SE ? T(`<p>The real MTCSE exam is taken online in English at the end of the course: <b>${EXAM.questions} single or multiple choice questions</b>, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>; with 50-59% the trainer may allow a second attempt. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} MTCSE questions, at least two from every module.</p>
+      <ul><li>You can move between questions and change answers until you submit.</li><li>The exam submits itself when time runs out.</li><li>After submitting you see every answer with an explanation and a score per module.</li></ul>`, `<p>Настоящий экзамен MTCSE сдаётся онлайн на английском в конце курса: <b>${EXAM.questions} вопросов с одним или несколькими ответами</b>, <b>${EXAM.minutes} минут</b>, проходной балл <b>${EXAM.pass}%</b>; при 50-59% тренер может разрешить вторую попытку. Этот пробный экзамен выбирает ${EXAM.questions} случайных вопросов из всех ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} вопросов MTCSE, минимум по два из каждого модуля.</p>
+      <ul><li>Можно переходить между вопросами и менять ответы до отправки.</li><li>Когда время закончится, экзамен отправится сам.</li><li>После отправки вы увидите все ответы с объяснениями и результат по каждому модулю.</li><li>Совет: переключите язык на EN, чтобы потренироваться на английских формулировках, как на настоящем экзамене.</li></ul>`) : T(`<p>The real MTCNA exam is an online test in English: <b>${EXAM.questions} questions</b>, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} questions in the course, at least two from every module.</p>
       <ul><li>You can move between questions and change answers until you submit.</li><li>The exam submits itself when time runs out.</li><li>After submitting you see every answer with an explanation and a score per module.</li></ul>`, `<p>Настоящий экзамен MTCNA это онлайн-тест на английском: <b>${EXAM.questions} вопросов</b>, <b>${EXAM.minutes} минут</b>, проходной балл <b>${EXAM.pass}%</b>. Этот пробный экзамен выбирает ${EXAM.questions} случайных вопросов из всех ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} вопросов курса, минимум по два из каждого модуля.</p>
       <ul><li>Можно переходить между вопросами и менять ответы до отправки.</li><li>Когда время закончится, экзамен отправится сам.</li><li>После отправки вы увидите все ответы с объяснениями и результат по каждому модулю.</li><li>Совет: переключите язык на EN, чтобы потренироваться на английских формулировках, как на настоящем экзамене.</li></ul>`)}
       <button class="btn" id="start">${T('Start the exam', 'Начать экзамен')}</button>
     </div>
-    <div class="card">${readinessHtml(rd)}</div>
+    <div class="card">${readinessHtml(rd, c)}</div>
     ${hist.length ? `<h3>${T('Previous attempts', 'Предыдущие попытки')}</h3><div class="table-wrap"><table><thead><tr><th>${T('Date', 'Дата')}</th><th>${T('Score', 'Результат')}</th><th>${T('Result', 'Итог')}</th><th>${T('Time', 'Время')}</th></tr></thead><tbody>${hist.map((h) => `<tr><td>${new Date(h.date).toLocaleString()}</td><td>${h.score}%</td><td class="${h.pass ? 'good' : 'bad'}">${h.pass ? T('Passed', 'Сдан') : T('Failed', 'Не сдан')}</td><td>${Math.round(h.secs / 60)} ${T('min', 'мин')}</td></tr>`).join('')}</tbody></table></div>` : ''}
   </div>`)
-  return { html, after: () => { document.getElementById('start').onclick = () => startExam(document.getElementById('exam')) } }
+  return { html, after: () => { document.getElementById('start').onclick = () => startExam(document.getElementById('exam'), c) } }
 }
 
-function pickExam() {
+function pickExam(c) {
+  const EXAM = c.exam, MODULES = c.modules
   const picked = []
   for (const m of MODULES) for (const q of shuffle(m.quiz).slice(0, 2)) picked.push({ ...q, mod: m.id })
   const rest = shuffle(MODULES.flatMap((m) => m.quiz.map((q) => ({ ...q, mod: m.id }))).filter((q) => !picked.some((p) => p.q === q.q)))
   return shuffle([...picked, ...rest.slice(0, EXAM.questions - picked.length)]).map(shuffledQuestion)
 }
 
-function startExam(el) {
-  const qs = pickExam()
+function startExam(el, c) {
+  const EXAM = c.exam, MODULES = c.modules
+  const qs = pickExam(c)
   const ans = new Array(qs.length).fill(null)
   const flagged = new Set()
   const t0 = Date.now()
@@ -612,16 +645,16 @@ function startExam(el) {
     const score = Math.round((right.filter(Boolean).length / qs.length) * 100)
     const pass = score >= EXAM.pass
     const secs = Math.round((Date.now() - t0) / 1000)
-    store.data.exams.push({ date: Date.now(), score, pass, secs }); store.save()
+    store.data[c.examKey] = [...(store.data[c.examKey] || []), { date: Date.now(), score, pass, secs }]; store.save()
     const perMod = MODULES.map((m) => { const idx = qs.map((q, i) => q.mod === m.id ? i : -1).filter((i) => i >= 0); return { m, n: idx.length, ok: idx.filter((i) => right[i]).length } }).filter((x) => x.n)
-    store.data.examMods = Object.fromEntries(perMod.map((x) => [x.m.id, { ok: x.ok, n: x.n }])); store.save()
+    store.data[c.modsKey] = Object.fromEntries(perMod.map((x) => [x.m.id, { ok: x.ok, n: x.n }])); store.save()
     el.removeAttribute('data-noterms')
     el.innerHTML = `<h1>${T('Exam result', 'Результат экзамена')}</h1>
       <div class="card result-card ${pass ? 'pass' : 'fail'}"><div class="big-score">${score}%</div><div><b>${pass ? T('Passed', 'Сдан') : T('Not passed', 'Не сдан')}</b>${timeout ? T(' (time ran out)', ' (время вышло)') : ''}<br>${T(`${right.filter(Boolean).length} of ${qs.length} correct in ${Math.floor(secs / 60)} min ${secs % 60} s. Pass mark ${EXAM.pass}%.`, `Верно ${right.filter(Boolean).length} из ${qs.length} за ${Math.floor(secs / 60)} мин ${secs % 60} с. Проходной балл ${EXAM.pass}%.`)}</div></div>
-      <h3>${T('By module', 'По модулям')}</h3><div class="permod">${perMod.map((x) => `<a href="#/module/${x.m.id}" class="pm"><span>${x.m.icon} ${esc(x.m.title)}</span><b class="${x.ok / x.n >= 0.6 ? 'good' : 'bad'}">${x.ok}/${x.n}</b></a>`).join('')}</div>
+      <h3>${T('By module', 'По модулям')}</h3><div class="permod">${perMod.map((x) => `<a href="${href(c, '/module/' + x.m.id)}" class="pm"><span>${x.m.icon} ${esc(x.m.title)}</span><b class="${x.ok / x.n >= 0.6 ? 'good' : 'bad'}">${x.ok}/${x.n}</b></a>`).join('')}</div>
       <h3>${T('Review', 'Разбор')}</h3>
       ${qs.map((q, i) => `<div class="qcard ${right[i] ? 'ok' : 'no'}"><div class="qn">${i + 1}. ${esc(q.q)}</div>${q.o.map((o, k) => `<div class="opt ${k === q.a ? 'right' : ''} ${ans[i] === k && k !== q.a ? 'wrong' : ''}">${k === q.a ? '✓' : ans[i] === k ? '✗' : '·'} ${esc(o)}</div>`).join('')}<div class="explain">${esc(q.e)}</div></div>`).join('')}
-      <div class="row"><a class="btn" href="#/exam">${T('Back to exam page', 'К странице экзамена')}</a></div>`
+      <div class="row"><a class="btn" href="${href(c, '/exam')}">${T('Back to exam page', 'К странице экзамена')}</a></div>`
     window.scrollTo(0, 0)
   }
   el.onclick = (e) => {
@@ -642,7 +675,27 @@ function startExam(el) {
   draw()
 }
 
+const tbl = (rows, mono = 1) => `<table><tbody>${rows.map(([a, b]) => `<tr><td class="${mono === 0 ? 'mono' : ''}">${a}</td><td class="${mono === 1 ? 'mono' : ''}">${b}</td></tr>`).join('')}</tbody></table>`
+function seCheatPage() {
+  return shell('cheat', `<h1>${T('MTCSE cheat sheet', 'Шпаргалка MTCSE')}</h1><div class="cheat">
+  <div class="card"><h3>${T('VPN and security ports', 'Порты VPN и безопасности')}</h3>${tbl([['IKE (IPsec)', 'udp 500'], ['NAT-T (IPsec)', 'udp 4500'], ['ESP / AH', T('IP proto 50 / 51', 'IP-протокол 50 / 51')], ['L2TP', 'udp 1701'], ['SSTP', 'tcp 443'], ['PPTP', 'tcp 1723 + GRE (47)'], ['OpenVPN', '1194'], ['WireGuard', T('udp listen-port (13231)', 'udp listen-port (13231)')], ['SSH / Winbox', '22 / 8291'], ['API / API-SSL', '8728 / 8729'], ['WebFig / HTTPS', '80 / 443'], [T('Well-known ports', 'Well-known ports'), '0-1023']])}</div>
+  <div class="card"><h3>${T('Packet flow (prerouting → input)', 'Путь пакета (prerouting → input)')}</h3><ol class="sm"><li>RAW prerouting</li><li>connection tracking</li><li>mangle prerouting</li><li>NAT dstnat</li><li>${T('routing decision', 'решение о маршрутизации')}</li><li>mangle input → <b>filter input</b> (${T('to the router', 'на маршрутизатор')})</li><li>${T('or', 'или')} mangle forward → <b>filter forward</b> → mangle postrouting → NAT srcnat</li></ol>
+    <h3>${T('Connection states', 'Состояния соединений')}</h3>${tbl([['new', T('first packet', 'первый пакет')], ['established', T('known connection', 'известное соединение')], ['related', T('belongs to one (ICMP error, FTP data)', 'связан с ним (ошибка ICMP, данные FTP)')], ['invalid', T('fits nothing: drop', 'ни к чему не подходит: drop')], ['untracked', T('notrack in RAW', 'notrack в RAW')]], 2)}</div>
+  <div class="card"><h3>${T('Brute-force template', 'Шаблон против перебора')}</h3><pre class="code sm"><code>drop src-address-list=ssh_blacklist
+stage3 → ssh_blacklist  10d
+stage2 → ssh_stage3     1m
+stage1 → ssh_stage2     1m
+new    → ssh_stage1     1m</code></pre><p class="sm">${T('Highest stage first. 5th new connection within a minute is dropped.', 'Сначала высший этап. 5-е новое соединение за минуту отбрасывается.')}</p>
+    <h3>PSD</h3><p class="sm mono">psd=21,3s,3,1</p><p class="sm">${T('weight 21 in 3 s; port &lt;1024 = 3, other = 1', 'вес 21 за 3 с; порт &lt;1024 = 3, остальные = 1')}</p></div>
+  <div class="card"><h3>${T('Certificates', 'Сертификаты')}</h3>${tbl([['K', T('private key', 'закрытый ключ')], ['A', T('authority (CA)', 'центр сертификации (CA)')], ['I', T('issued by a local CA', 'выпущен локальным CA')], ['R', T('revoked', 'отозван')], ['T', T('trusted', 'доверенный')]], 0)}
+    ${tbl([['CA', 'key-cert-sign,crl-sign'], [T('server', 'сервер'), 'tls-server + SAN'], [T('client', 'клиент'), 'tls-client'], [T('export with key', 'экспорт с ключом'), 'type=pkcs12 export-passphrase=…']])}</div>
+  <div class="card"><h3>${T('IPsec objects', 'Объекты IPsec')}</h3>${tbl([['profile', T('phase 1: hash, enc, DH, NAT-T, DPD', 'фаза 1: hash, enc, DH, NAT-T, DPD')], ['proposal', T('phase 2: auth, enc, PFS', 'фаза 2: auth, enc, PFS')], ['peer', T('who: address, exchange-mode, passive', 'кто: address, exchange-mode, passive')], ['identity', T('how to authenticate, mode-config, generate-policy', 'как аутентифицировать, mode-config, generate-policy')], ['policy', T('what traffic to encrypt (template for road warriors)', 'какой трафик шифровать (шаблон для road warrior)')], ['mode-config', T('pool, split-include, DNS for clients', 'пул, split-include, DNS для клиентов')]], 0)}</div>
+  <div class="card"><h3>${T('Hardening in one look', 'Защита коротко')}</h3><ul class="sm"><li>${T('own full user, admin disabled', 'свой пользователь full, admin отключён')}</li><li>${T('disable telnet, ftp, www, api; address= on the rest', 'отключить telnet, ftp, www, api; address= на остальных')}</li><li>${T('mac-server, mac-winbox, discovery: LAN only', 'mac-server, mac-winbox, discovery: только LAN')}</li><li>${T('input: est,rel accept, invalid drop, ICMP, LAN, drop rest', 'input: est,rel accept, invalid drop, ICMP, LAN, drop остального')}</li><li>${T('RAW drop known bad sources', 'RAW drop известных плохих источников')}</li><li>tcp-syncookies=yes, rp-filter=strict</li><li>/ip ssh strong-crypto=yes</li><li>${T('keep RouterOS and RouterBOOT updated', 'обновляйте RouterOS и RouterBOOT')}</li></ul></div>
+  </div>`)
+}
+
 function cheatPage() {
+  if (CUR === SE) return seCheatPage()
   return shell('cheat', `<h1>${T('Cheat sheet', 'Шпаргалка')}</h1><div class="cheat">
   <div class="card"><h3>${T('Default ports', 'Порты по умолчанию')}</h3><table><tbody>${[['FTP', '21'], ['SSH', '22'], ['Telnet', '23'], ['DNS', '53 udp/tcp'], ['DHCP', '67/68 udp'], ['HTTP / WebFig', '80'], ['NTP', '123 udp'], ['SNMP', '161 udp'], ['HTTPS', '443'], ['MNDP', '5678 udp'], ['PPTP', '1723 tcp + GRE (47)'], ['L2TP', '1701 udp'], ['IPsec', '500, 4500 udp + ESP'], ['SSTP', '443 tcp'], ['OpenVPN', '1194'], [T('Bandwidth test', 'Bandwidth test'), '2000 tcp'], ['API / API-SSL', '8728 / 8729'], ['Winbox', '8291']].map(([a, b]) => `<tr><td>${a}</td><td class="mono">${b}</td></tr>`).join('')}</tbody></table></div>
   <div class="card"><h3>${T('CLI keys', 'Клавиши CLI')}</h3><table><tbody>${[['Tab / Tab Tab', T('complete / list', 'дополнить / список')], ['? (v6) / F1 (v7)', T('help', 'справка')], ['Ctrl+X', 'Safe Mode'], ['Ctrl+C', T('interrupt', 'прервать')], ['Ctrl+D', T('logout', 'выход')], ['Ctrl+K', T('delete to end of line', 'удалить до конца строки')], ['Ctrl+L / F5', T('clear screen', 'очистить экран')], ['Ctrl+V', 'hotlock'], ['..  /  /', T('up one level / root', 'на уровень выше / в корень')]].map(([a, b]) => `<tr><td class="mono">${a}</td><td>${b}</td></tr>`).join('')}</tbody></table></div>
@@ -661,12 +714,14 @@ function notFound() { return shell('', `<h1>${T('Page not found', 'Страни�
 
 // ---------- router ----------
 async function route() {
-  if (examTimer && !location.hash.startsWith('#/exam')) { clearInterval(examTimer); examTimer = null }
-  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+  if (examTimer && !/^#\/(mtcse\/)?exam/.test(location.hash)) { clearInterval(examTimer); examTimer = null }
+  let parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+  CUR = NA
+  if (parts[0] === 'mtcse') { CUR = SE; parts = parts.length > 1 ? parts.slice(1) : ['mtcna'] }
   let page
   if (!parts.length) page = await academyPage()
   else if (parts[0] === 'mtcna') page = await homePage()
-  else if (parts[0] === 'course') page = parts[1] === 'mtcna' ? await homePage() : coursePage(parts[1])
+  else if (parts[0] === 'course') { if (COURSE_DATA[parts[1]]) CUR = COURSE_DATA[parts[1]]; page = COURSE_DATA[parts[1]] ? await homePage() : coursePage(parts[1]) }
   else if (parts[0] === 'glossary') page = glossaryPage(parts[1])
   else if (parts[0] === 'module') page = await modulePage(parts[1], parts[2], parts[3])
   else if (parts[0] === 'labs') page = labsPage()
@@ -675,7 +730,7 @@ async function route() {
   else if (parts[0] === 'sims') page = simsPage()
   else if (parts[0] === 'sim') page = simPage(parts[1])
   else if (parts[0] === 'exam') page = await examPage()
-  else if (parts[0] === 'troubleshoot') page = troublePage()
+  else if (parts[0] === 'troubleshoot' && CUR === NA) page = troublePage()
   else if (parts[0] === 'cheatsheet') page = cheatPage()
   else page = notFound()
   const { html, after } = typeof page === 'string' ? { html: page } : page
@@ -703,7 +758,7 @@ function bindCommon() {
     mark.textContent = done ? T('✓ Done', '✓ Пройдено') : T('Mark as done', 'Отметить пройденным')
     mark.classList.toggle('ghost', done)
     const [mid, idx] = k.split(':')
-    const lm = document.querySelector(`.side a[href="#/module/${mid}/lesson/${idx}"] .lmark`)
+    const lm = document.querySelector(`.side a[href="${href(CUR, `/module/${mid}/lesson/${idx}`)}"] .lmark`)
     if (lm) lm.innerHTML = done ? '✓' : `<span class="dot">${Number(idx) + 1}</span>`
   }
   const rp = document.getElementById('reset-progress')

@@ -1,5 +1,5 @@
 import { T } from './i18n.js'
-// Course sections of the academy. Only MTCNA has content so far; the others show a "coming soon" page.
+// Course sections of the academy. MTCNA and MTCSE have content; the others show a "coming soon" page.
 
 export const COURSES = [
   { id: 'mtcna', code: 'MTCNA', icon: '🌐', ready: true, href: '#/mtcna',
@@ -27,7 +27,7 @@ export const COURSES = [
   { id: 'mtcipv6e', code: 'MTCIPv6E', icon: '6️⃣', name: 'MikroTik Certified IPv6 Engineer',
     desc: T('IPv6: addressing, neighbour discovery, DHCPv6, routing and firewall.', 'IPv6: адресация, обнаружение соседей, DHCPv6, маршрутизация и файрвол.'),
     topics: T(['IPv6 addressing', 'Neighbour discovery and SLAAC', 'DHCPv6 and prefix delegation', 'IPv6 routing and firewall'], ['Адресация IPv6', 'Обнаружение соседей и SLAAC', 'DHCPv6 и делегирование префикса', 'Маршрутизация и файрвол IPv6']) },
-  { id: 'mtcse', code: 'MTCSE', icon: '🔐', name: 'MikroTik Certified Security Engineer',
-    desc: T('Security: hardening RouterOS, attacks and defences, firewall, VPN and IPsec.', 'Безопасность: защита RouterOS, атаки и защита от них, файрвол, VPN и IPsec.'),
+  { id: 'mtcse', code: 'MTCSE', icon: '🔐', ready: true, href: '#/mtcse', name: 'MikroTik Certified Security Engineer',
+    desc: T('Security: hardening RouterOS, attacks and defences, firewall and RAW, cryptography and certificates, port knocking, SSH tunnels, L2TP/IPsec, SSTP and IKEv2.', 'Безопасность: защита RouterOS, атаки и защита от них, файрвол и RAW, криптография и сертификаты, port knocking, SSH-туннели, L2TP/IPsec, SSTP и IKEv2.'),
     topics: T(['Hardening RouterOS', 'Common attacks and how to stop them', 'Firewall design', 'VPN, IPsec and WireGuard'], ['Защита RouterOS', 'Типовые атаки и защита от них', 'Проектирование файрвола', 'VPN, IPsec и WireGuard']) },
 ]
