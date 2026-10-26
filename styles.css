@@ -338,3 +338,14 @@ code.gl { text-decoration: none; box-shadow: inset 0 -1px 0 color-mix(in srgb, v
   .subnav { padding: 6px 16px; }
   .gl-list { grid-template-columns: 1fr; }
 }
+/* MTCSE simulators */
+.hs { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: stretch; margin: 12px 0; }
+.hs-end { display: flex; align-items: center; justify-content: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); font-weight: 600; text-align: center; }
+.hs-mid { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hs-step { display: flex; flex-direction: column; align-items: center; padding: 4px 6px; border-radius: 8px; opacity: .35; text-align: center; }
+.hs-step.done { opacity: .7; }
+.hs-step.cur { opacity: 1; background: var(--accent-soft); }
+.hs-arrow { font-family: ui-monospace, monospace; color: var(--accent); white-space: nowrap; overflow: hidden; max-width: 100%; }
+#k-log li.good, #k-log li .good { color: var(--good); }
+#k-log li.bad { color: var(--bad); }
+@media (max-width: 640px) { .hs { grid-template-columns: 1fr; } .hs-end { padding: 4px; } }
