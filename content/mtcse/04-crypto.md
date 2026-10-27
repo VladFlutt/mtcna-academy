@@ -206,7 +206,7 @@ Three patterns to keep apart:
 
 - **Server certificate only.** The client checks the server, the server checks a username and password. This is the usual SSTP and L2TP/IPsec mode, and what a Windows client does with no extra setup.
 - **Mutual certificates.** `verify-client-certificate=yes` (SSTP) or `require-client-certificate=yes` (OVPN). Nobody connects without a certificate your CA issued, so a stolen password alone is useless. This is the MTCSE answer for road warriors.
-- **IPsec with digital signatures.** The identity references both sides' certificates instead of a pre-shared key. That is how the IKEv2 road warrior in the next module authenticates.
+- **IPsec with digital signatures.** The identity references both sides' certificates instead of a pre-shared key. That is how the IKEv2 road warrior in module 7 authenticates.
 
 ### The Windows client workflow
 
