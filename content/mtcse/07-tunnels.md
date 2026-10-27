@@ -120,9 +120,9 @@ On the client side the connection status shows the cipher, for example **AES256-
 
 > Practise in the lab **"SSTP server with a public certificate"**.
 
-# Lesson: IPsec building blocks
+# Lesson: IPsec recap for road warriors
 
-IKEv2 is configured with RouterOS **IPsec** menus, so first learn the pieces.
+IKEv2 is configured with the RouterOS **IPsec** menus. Module 6 explains IPsec in depth (AH and ESP, modes, IKE phases, site to site); this is the short recap you need for road warriors.
 
 | Term | Meaning |
 |---|---|
