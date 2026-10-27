@@ -71,7 +71,23 @@ The **connect list** (station side) decides which APs the station may connect to
 
 - **mode=ap-bridge** needs licence **level 4** or higher (level 3 is station only). Up to **2007** clients in theory.
 - **bridge** mode: an AP that accepts only **one** client (licence level 3 is enough), used for point-to-point links.
-- **Freq. Usage** shows how busy each frequency is; pick the least used one.
+- **Freq. Usage** shows how busy each frequency is; pick the least used one (see below).
+
+### Choosing a channel with Freq. Usage
+
+Before you fix `frequency=` on an AP, look at what the air around it already carries. In Winbox open the wlan interface and press **Freq. Usage** (in the CLI: `/interface wireless frequency-monitor`):
+
+    /interface wireless frequency-monitor wlan1
+
+Step by step:
+
+1. The tool switches the radio into monitor mode, so **connected clients drop** while it runs. Do it before the AP goes live, or in a maintenance window.
+2. Each line is one frequency (2412, 2417, ... for 2.4 GHz) with **Usage %** (how much of the time the channel is busy) and **Noise floor** (dBm).
+3. Let it run for a minute, then stop it with **Ctrl+C** (or *Stop* in Winbox).
+4. Pick the channel with the lowest usage and a low noise floor. On 2.4 GHz stay on the non-overlapping 1, 6 or 11 (2412, 2437, 2462).
+5. Set it: `/interface wireless set wlan1 frequency=2462`.
+
+> **Freq. Usage vs Scan.** Scan lists *networks* (SSIDs, signal) that it hears. Freq. Usage measures *how busy* each frequency is, including non-Wi-Fi noise (microwave ovens, cameras) that Scan never shows.
 
 ### Registration table
 
@@ -121,7 +137,30 @@ Most security settings live in a **security profile** (**Wireless > Security Pro
 | **802.11** | Standard, works with any vendor |
 | **NV2** | MikroTik TDMA protocol: better for PtMP with many clients and long distance. MikroTik only |
 | **nstreme** | Older MikroTik polling protocol |
+| **nstreme dual** | Nstreme over two radios: one transmits, one receives (full duplex) |
 | **any** | Station tries all |
+
+### Why Nstreme existed: 802.11a vs Nstreme
+
+The slides compare the same pair of 5 GHz dishes, back in 1999 with 802.11a:
+
+| | 20 MHz channel | 40 MHz channel (turbo) | Distance |
+|---|---|---|---|
+| **802.11a** channel rate | 54 Mbps | 108 Mbps | — |
+| **802.11a** real TCP throughput | ≈ 24.4 Mbps | ≈ 44 Mbps | **limited**: ACK timeouts of the standard break long links |
+| **Nstreme** real TCP throughput | ≈ 30 Mbps | ≈ 60 Mbps | **no distance limit** |
+
+Two lessons from the table:
+
+- The channel rate is never the TCP speed. Standard 802.11 is half duplex and waits for an ACK after every frame (CSMA/CA), so roughly half the air time is overhead.
+- **Nstreme** is a MikroTik **proprietary polling** protocol: the AP polls the clients in turn instead of letting them contend for the air. Less overhead and no 802.11 ACK timing, so it is faster and works on long links. It works **only between MikroTik devices** (PtP or PtMP).
+
+**Nstreme Dual** goes further: each side uses **two radios**, one only transmits and one only receives (in the slide 60 Mbps TX and 60 Mbps RX at the same time). This makes a **full duplex** wireless bridge, at the cost of two radios and two antennas per side.
+
+**NV2** (Nstreme version 2) replaced Nstreme: it uses **TDMA** (time slots) instead of polling, solves the hidden node problem and gives lower latency. In a modern PtP link you choose NV2; Nstreme and Nstreme Dual remain for older installations and for the exam.
+
+    /interface wireless set wlan1 wireless-protocol=nv2
+    /interface wireless nstreme set wlan1 enable-nstreme=yes
 
 ### Point-to-point bridge
 
