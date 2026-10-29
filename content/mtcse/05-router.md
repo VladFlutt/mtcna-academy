@@ -30,6 +30,8 @@ There is no special "knock" feature. You build it from **address lists with time
         chain=input dst-port=33333 protocol=tcp src-address-list=knock2
     add action=drop chain=input dst-port=8291 protocol=tcp src-address-list=!knock-final
 
+![Port knocking rules from the slides (course slide)](/img/mtcse/se5-04.webp)
+
 The `!` in `src-address-list=!knock-final` means **NOT**: the rule matches sources that are **not** in the list.
 
 ### Follow the knocks step by step
@@ -163,11 +165,15 @@ So your PostgreSQL client connects to `127.0.0.1:9999` on your PC and actually t
 - The **Red server** is behind it, not reachable from your PC.
 - `ssh -L 8080:red:80 user@blue` makes `http://127.0.0.1:8080` on your PC show the web page of Red. The SSH server (Blue) opens the connection to Red for you.
 
+![An SSH tunnel carries an unencrypted service through the firewall (course slide)](/img/mtcse/se5-09.webp)
+
 ### RouterOS as the SSH server
 
 The router must allow forwarding first:
 
     /ip ssh set forwarding-enabled=both
+
+![Local forwarding through RouterOS step by step (course slide)](/img/mtcse/se5-10.webp)
 
 Values: **no** (default), **local** (`-L` from clients), **remote** (`-R`), **both**.
 

@@ -47,6 +47,8 @@ The slides draw IPsec as an **IPsec security policy** that uses three protocols:
 | **ESP** | Encapsulating Security Payload | Protects the data: encryption **plus** authentication and integrity |
 | **IKE** | Internet Key Exchange | Agrees on the keys and parameters, and authenticates the peers |
 
+![IPsec architecture: the security policy, AH, ESP and IKE (course slide)](/img/mtcse/se6-07.webp)
+
 So there are two groups: **AH and ESP protect the traffic**, **IKE sets up the keys** they use. The **policy** decides which packets get protected at all.
 
 ### AH, step by step
@@ -72,6 +74,8 @@ ESP is the one you will use almost every time. Pick AES with SHA256 (or AES-GCM,
 
 Start from a normal packet: `IP | TCP | Data`.
 
+![What AH and ESP add to an IP packet (course slide)](/img/mtcse/se6-09.webp)
+
 **With AH:** `IP | AH header | TCP | Data`. The whole packet is **authenticated**, nothing is encrypted.
 
 **With ESP:** `IP | ESP header | TCP | Data | ESP trailer | ESP auth`.
@@ -85,6 +89,8 @@ Start from a normal packet: `IP | TCP | Data`.
 ### Two ways to use AH or ESP
 
 IPsec runs in one of two modes, and choosing the wrong one is the most common design mistake.
+
+![Transport mode keeps the original IP header, tunnel mode adds a new one (course slide)](/img/mtcse/se6-17.webp)
 
 | | **Transport mode** | **Tunnel mode** |
 |---|---|---|
@@ -128,6 +134,8 @@ The slide topology:
 
 - **Left office**: LAN 192.168.1.0/24, PC 192.168.1.2, router WAN 2.2.2.2/30, default route via 2.2.2.1.
 - **Right office**: LAN 192.168.2.0/24, PC 192.168.2.2, router WAN 3.3.3.2/30, default route via 3.3.3.1.
+
+![Tunnel mode between two offices (course slide)](/img/mtcse/se6-21.webp)
 
 **Step 1: routing without IPsec.** The PC sends `DATA | TCP | IP src 192.168.1.2 dst 192.168.2.2`. The left router has only a default route to the Internet, so it sends the packet there. The Internet has no idea where 192.168.2.0/24 is: private addresses are not routed. **The packet is lost.**
 
@@ -199,6 +207,8 @@ IKE works in two phases.
 3. **IKE phase 2**: over that channel they negotiate the IPsec SAs, which is the IPsec tunnel.
 4. **Secure traffic exchange**: ESP (or AH) packets flow with the keys from phase 2.
 
+![IPsec simple schema: IKE phase 1, IKE phase 2, then the IPsec tunnel (course slide)](/img/mtcse/se6-26.webp)
+
 ### Where each phase lives in RouterOS
 
 | What | Phase | RouterOS menu |
@@ -218,6 +228,8 @@ IKE works in two phases.
 ### Peers
 
     /ip ipsec peer
+
+![Peers and identities on R1 and R2 (course slide)](/img/mtcse/se6-29.webp)
 
 The peer settings are used to set up the connection **between the IKE daemons**. That connection is then used to negotiate keys and algorithms for the SAs, and **one peer can have several SAs**.
 

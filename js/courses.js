@@ -1,13 +1,13 @@
 import { T } from './i18n.js'
-// Course sections of the academy. MTCNA and MTCSE have content; the others show a "coming soon" page.
+// Course sections of the academy. MTCNA, MTCSE, MTCRE and MTCTCE have content; the others show a "coming soon" page.
 
 export const COURSES = [
   { id: 'mtcna', code: 'MTCNA', icon: '🌐', ready: true, href: '#/mtcna',
     name: 'MikroTik Certified Network Associate',
     desc: T('The entry certification: RouterOS basics, DHCP, bridging, routing, wireless, firewall and NAT, QoS, tunnels and tools.', 'Начальная сертификация: основы RouterOS, DHCP, бриджи, маршрутизация, беспроводные сети, файрвол и NAT, QoS, туннели и инструменты.'),
     topics: [] },
-  { id: 'mtcre', code: 'MTCRE', icon: '🧭', name: 'MikroTik Certified Routing Engineer',
-    desc: T('Routing in depth: static routes and route selection, tunnels, OSPF.', 'Маршрутизация углублённо: статические маршруты и выбор маршрута, туннели, OSPF.'),
+  { id: 'mtcre', code: 'MTCRE', icon: '🧭', ready: true, href: '#/mtcre', name: 'MikroTik Certified Routing Engineer',
+    desc: T('Routing in depth: route selection, static and recursive routes, policy routing, tunnels and OSPF, practised in networks of several routers.', 'Маршрутизация углублённо: выбор маршрута, статические и рекурсивные маршруты, маршрутизация по политикам, туннели и OSPF, с практикой в сетях из нескольких маршрутизаторов.'),
     topics: T(['Static routing, recursive routes, ECMP', 'Point-to-point addressing', 'Tunnels: IPIP, EoIP, GRE, VPN', 'Dynamic routing with OSPF'], ['Статическая маршрутизация, рекурсивные маршруты, ECMP', 'Адресация точка-точка', 'Туннели: IPIP, EoIP, GRE, VPN', 'Динамическая маршрутизация OSPF']) },
   { id: 'mtcswe', code: 'MTCSWE', icon: '🔀', name: 'MikroTik Certified Switching Engineer',
     desc: T('Switching: bridge and switch chip, VLAN, spanning tree, link aggregation and L2 security.', 'Коммутация: бридж и чип коммутатора, VLAN, связующее дерево, агрегирование каналов и безопасность L2.'),
@@ -15,8 +15,8 @@ export const COURSES = [
   { id: 'mtcwe', code: 'MTCWE', icon: '📶', name: 'MikroTik Certified Wireless Engineer',
     desc: T('Wireless: 802.11 standards, wireless tools and troubleshooting, security, CAPsMAN.', 'Беспроводные сети: стандарты 802.11, инструменты и диагностика, безопасность, CAPsMAN.'),
     topics: T(['802.11 standards and radio basics', 'Wireless tools and troubleshooting', 'Wireless security and encryption', 'Point-to-point links, NV2', 'Centralised management with CAPsMAN'], ['Стандарты 802.11 и основы радио', 'Беспроводные инструменты и диагностика', 'Безопасность и шифрование', 'Линки точка-точка, NV2', 'Централизованное управление CAPsMAN']) },
-  { id: 'mtctce', code: 'MTCTCE', icon: '🚦', name: 'MikroTik Certified Traffic Control Engineer',
-    desc: T('Traffic control: packet flow, firewall, mangle, QoS with HTB and queue trees.', 'Управление трафиком: прохождение пакетов, файрвол, mangle, QoS с HTB и деревьями очередей.'),
+  { id: 'mtctce', code: 'MTCTCE', icon: '🚦', ready: true, href: '#/mtctce', name: 'MikroTik Certified Traffic Control Engineer',
+    desc: T('Traffic control: DNS and DHCP in depth, web proxy, packet flow, firewall and attacks, NAT and mangle, QoS with HTB, queue trees and PCQ.', 'Управление трафиком: DNS и DHCP углублённо, веб-прокси, путь пакета, файрвол и атаки, NAT и mangle, QoS с HTB, деревьями очередей и PCQ.'),
     topics: T(['Packet flow diagram', 'Firewall filter and connection tracking', 'Mangle and packet marking', 'Queue tree, HTB, PCQ', 'DNS and DHCP in depth'], ['Схема прохождения пакетов', 'Firewall filter и отслеживание соединений', 'Mangle и маркировка пакетов', 'Queue tree, HTB, PCQ', 'DNS и DHCP углублённо']) },
   { id: 'mtcume', code: 'MTCUME', icon: '👥', name: 'MikroTik Certified User Management Engineer',
     desc: T('User management: PPP, PPPoE, HotSpot, RADIUS and User Manager.', 'Управление пользователями: PPP, PPPoE, HotSpot, RADIUS и User Manager.'),

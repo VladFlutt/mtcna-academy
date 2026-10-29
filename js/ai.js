@@ -256,6 +256,10 @@ export function readiness(MODULES, LABS, data, counts) {
 
 // ---------- 6. tutor chat ----------
 const TOPICS = [
+  [/ospf|neighbor|сосед|lsa|area|област|dr\b|bdr/i, () => T('OSPF neighbours need the same area, network type, hello/dead timers, subnet and MTU. In RouterOS 7: /routing ospf instance (router-id), area, interface-template (interfaces or networks, type, cost, passive). A neighbour stuck in Init or ExStart usually means a mismatch.', 'Соседям OSPF нужны одинаковые area, тип сети, таймеры hello/dead, подсеть и MTU. В RouterOS 7: /routing ospf instance (router-id), area, interface-template (interfaces или networks, type, cost, passive). Сосед, застрявший в Init или ExStart, обычно означает несовпадение.'), '/routing ospf neighbor print\n/routing ospf interface print\n/routing ospf lsa print'],
+  [/recursive|рекурс|scope|check-gateway|failover|резерв/i, () => T('A recursive route has a gateway that is not directly connected; it resolves through another route whose scope is not higher than its target-scope. check-gateway=ping makes a route inactive when its gateway stops answering, and the route with the next distance takes over.', 'Рекурсивный маршрут имеет шлюз, который не подключён напрямую; он разрешается через другой маршрут, scope которого не больше его target-scope. check-gateway=ping делает маршрут неактивным, когда шлюз перестаёт отвечать, и включается маршрут со следующим distance.'), '/ip route print detail'],
+  [/policy|pbr|routing.?table|routing.?rule|mark-routing|таблиц|политик|правил/i, () => T('Policy routing: create /routing table with fib, put routes into it with routing-table=, then choose the table with /routing rule (src-address, dst-address, interface) or with mangle action=mark-routing. action=lookup falls back to main when the table has no route; lookup-only-in-table does not.', 'Маршрутизация по политикам: создайте /routing table с fib, добавьте в неё маршруты с routing-table=, затем выбирайте таблицу через /routing rule (src-address, dst-address, interface) или mangle action=mark-routing. action=lookup переходит в main, если в таблице нет маршрута; lookup-only-in-table нет.'), '/routing rule print\n/ip route print where routing-table=main'],
+  [/gre|ipip|eoip|wireguard|wg|tunnel|туннел/i, () => T('A GRE/IPIP/EoIP tunnel needs matching local and remote addresses on both sides (EoIP also the same tunnel-id) and keepalive to detect a dead peer. WireGuard needs each side\'s public key, an endpoint on at least one side, and allowed-address that covers the remote networks.', 'Туннелю GRE/IPIP/EoIP нужны согласованные local и remote адреса на обеих сторонах (для EoIP ещё одинаковый tunnel-id) и keepalive, чтобы заметить мёртвую сторону. WireGuard нужны публичные ключи обеих сторон, endpoint хотя бы на одной стороне и allowed-address, покрывающий удалённые сети.'), '/interface print\n/interface wireguard peers print'],
   [/firewall|filter|фаервол|файрвол|брандмауэр|input|forward/i, () => T('Filter chains: input (to the router), forward (through it), output (from it). Rules are checked top to bottom and the first match wins. Template: accept established,related, drop invalid, accept ICMP, then drop everything not from the LAN.', 'Цепочки filter: input (к маршрутизатору), forward (через него), output (от него). Правила проверяются сверху вниз, срабатывает первое совпадение. Шаблон: accept established,related, drop invalid, accept ICMP, затем drop всего не из LAN.'), '/ip firewall filter print'],
   [/nat|masquerade|маскарад|проброс|port.?forward|dst-nat/i, () => T('srcnat masquerade replaces the private source address with the WAN address. dstnat (dst-nat) forwards a WAN port to a LAN host. NAT rules see only the first packet of a connection.', 'srcnat masquerade заменяет частный адрес источника на адрес WAN. dstnat (dst-nat) пробрасывает порт WAN на хост в LAN. Правила NAT видят только первый пакет соединения.'), '/ip firewall nat print'],
   [/dhcp/i, () => T('A DHCP server needs an interface with an IP address, a pool and a network entry with gateway and dns-server. /ip dhcp-server setup does all of it.', 'DHCP-серверу нужны интерфейс с IP-адресом, пул и запись network с gateway и dns-server. Всё это делает /ip dhcp-server setup.'), '/ip dhcp-server print\n/ip dhcp-server network print'],
@@ -268,12 +272,15 @@ const TOPICS = [
   [/user|password|парол|пользоват|admin/i, () => T('Create your own user in group full, then disable admin. Services and users can be limited by address=.', 'Создайте своего пользователя в группе full и отключите admin. Сервисы и пользователей можно ограничить через address=.'), '/user print'],
 ]
 
-export function localAnswer(question, st) {
+export function localAnswer(question, st, network) {
   const out = []
   const q = String(question || '')
   const tp = TOPICS.find(([re]) => re.test(q))
   if (tp) out.push(tp[1](), T('Check with:', 'Проверьте:') + '\n' + tp[2])
-  if (st) {
+  if (network) {
+    const bad = (network.tests || []).filter((x) => !x.ok)
+    out.push(bad.length ? T('Failing tests right now:', 'Сейчас не проходят:') + '\n' + bad.map((x) => `${x.from} → ${x.to}: ${x.why || 'timeout'}`).join('\n') + '\n' + T('Follow the packet hop by hop with /tool traceroute and check /ip route print on the router where it stops. Remember the reply needs a route too.', 'Пройдите путь пакета по хопам через /tool traceroute и проверьте /ip route print на маршрутизаторе, где он останавливается. Помните, что ответу тоже нужен маршрут.') : T('All test pings work right now.', 'Сейчас все тестовые пинги проходят.'))
+  } else if (st) {
     const inet = laptopInternet(st)
     if (/интернет|internet|ping|не работ|not work|why|почему|broken|слом/i.test(q) || !tp) {
       if (!inet.ok) { const fx = reasonFix(inet.reason); out.push(T('Your laptop has no Internet right now. ', 'Сейчас у ноутбука нет Интернета. ') + (fx ? fx.text + '\n' + fx.cmd : inet.reason)) }
@@ -290,11 +297,12 @@ export function exportConfig(st) {
 }
 
 // Ask the Claude tutor through /api/tutor; falls back to the built-in answer.
-export async function askTutor(question, { st, lab, lastError, course } = {}) {
+export async function askTutor(question, { st, lab, lastError, course, config, network } = {}) {
   const ctx = {
     question: String(question).slice(0, 1000), lang: LANG, course: course || 'MTCNA',
-    config: st ? exportConfig(st).slice(0, 8000) : '',
-    laptop: st ? (() => { const L = laptopState(st), i = laptopInternet(st); return { ip: L.ip, gw: L.gw, dns: L.dns, internet: i.ok, reason: i.reason || '' } })() : null,
+    config: config ? config.slice(0, 16000) : st ? exportConfig(st).slice(0, 8000) : '',
+    network: network || null,
+    laptop: st && !network ? (() => { const L = laptopState(st), i = laptopInternet(st); return { ip: L.ip, gw: L.gw, dns: L.dns, internet: i.ok, reason: i.reason || '' } })() : null,
     lab: lab ? { title: lab.title, tasks: lab.tasks.map((t, k) => ({ t: t.t, done: !!lab.done?.[k] })) } : null,
     lastError: lastError || '',
   }
@@ -306,8 +314,8 @@ export async function askTutor(question, { st, lab, lastError, course } = {}) {
     if (r.ok) {
       const j = await r.json()
       if (j.text) return { source: 'claude', text: j.text }
-      if (j.refusal) return { source: 'local', text: T('The AI tutor could not answer this one. ', 'ИИ-тьютор не смог ответить на этот вопрос. ') + '\n\n' + localAnswer(question, st) }
+      if (j.refusal) return { source: 'local', text: T('The AI tutor could not answer this one. ', 'ИИ-тьютор не смог ответить на этот вопрос. ') + '\n\n' + localAnswer(question, st, network) }
     }
   } catch {}
-  return { source: 'local', text: localAnswer(question, st) }
+  return { source: 'local', text: localAnswer(question, st, network) }
 }

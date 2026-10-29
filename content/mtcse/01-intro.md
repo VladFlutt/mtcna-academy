@@ -82,6 +82,10 @@ Every attack changes the normal flow "sender → receiver" in one of four ways:
 | **Modification** | The traffic arrives changed | Integrity | Man-in-the-middle rewriting a page |
 | **Fabrication** | Traffic appears that nobody sent | Authenticity | Spoofed DHCP offers, forged e-mail |
 
+![The four classes of attack and the property each one breaks](/img/mtcse/attack-types.svg)
+
+![Passive and active attacks (course slide)](/img/mtcse/se1-17.webp)
+
 > **How to use this:** when you read about a new attack, first ask which of the four it is. That immediately tells you which defence family to reach for: encryption against interception, filtering and capacity against interruption, signatures and hashes against modification, authentication against fabrication.
 
 ### The threat catalogue from the slides
@@ -91,6 +95,8 @@ Every attack changes the normal flow "sender → receiver" in one of four ways:
 - **Client-server, star**: every bot talks to one CnC server. Simple, but take down the server and the botnet is dead.
 - **Client-server, multi-server / hierarchical**: several CnC servers, or layers of them, so losing one does not stop the rest.
 - **Peer-to-peer**: no fixed server at all; bots pass commands to each other. Hardest to kill.
+
+![A botnet: infected hosts controlled from one command server (course slide)](/img/mtcse/se1-28.webp)
 
 **DDoS.** A distributed denial of service, usually run from a botnet. Three families:
 
@@ -133,6 +139,12 @@ The slides compare four deployment options. There is no single right answer; the
 | **Firewall on each specific router** | Rules live next to the network they protect, load is spread | Many places to keep in sync, easy to forget one |
 | **Dedicated IPS/IDS appliance** | Deep inspection, signatures, reporting | Expensive, another device to run, can become a bottleneck |
 | **MikroTik plus an IDS as a trigger** | The IDS only detects and tells RouterOS which address to drop; RouterOS does the cheap blocking | You must build and maintain the glue (scripts, API, address lists) |
+
+![One global firewall router at the edge (course slide)](/img/mtcse/se1-51.webp)
+
+![A firewall on each router (course slide)](/img/mtcse/se1-52.webp)
+
+![MikroTik with an IDS as a trigger (course slide)](/img/mtcse/se1-55.webp)
 
 The last option is the one the MTCSE course keeps coming back to: **detect in software, block in an address list, drop in RAW.** You will build exactly that pattern in the port scan and brute force labs.
 

@@ -1,6 +1,8 @@
 import { T } from './i18n.js'
 // Minimal Markdown renderer for the lesson files (headings, paragraphs,
-// lists, tables, blockquotes, indented code, bold, italic, inline code).
+// lists, tables, blockquotes, indented code, bold, italic, inline code, figures).
+// A figure is a line of its own: ![Caption](/img/course/name.svg). SVG figures are
+// inlined by the app after rendering so that they follow the light/dark theme.
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -26,6 +28,12 @@ export function renderMarkdown(src) {
       const buf = []
       while (i < lines.length && (/^ {4}/.test(lines[i]) || (!lines[i].trim() && /^ {4}/.test(lines[i + 1] || '')))) { buf.push(lines[i].slice(4)); i++ }
       out.push(`<pre class="code"><code>${esc(buf.join('\n'))}</code><button class="copy" title="${T('Copy', 'Копировать')}">${T('Copy', 'Копировать')}</button></pre>`)
+      continue
+    }
+    const fig = l.match(/^!\[([^\]]*)\]\((\/img\/[\w\/.-]+)\)\s*$/)
+    if (fig) {
+      out.push(`<figure class="fig"><img src="${fig[2]}" alt="${esc(fig[1]).replace(/"/g, '&quot;')}" loading="lazy"><figcaption>${inline(fig[1])}</figcaption></figure>`)
+      i++
       continue
     }
     const h = l.match(/^(#{1,4})\s+(.*)/)
@@ -59,7 +67,7 @@ export function renderMarkdown(src) {
       continue
     }
     const buf = []
-    while (i < lines.length && lines[i].trim() && !/^(#|\||>| {4}|\s*[-*]\s|\s*\d+\.\s)/.test(lines[i])) { buf.push(lines[i]); i++ }
+    while (i < lines.length && lines[i].trim() && !/^(#|\||>| {4}|\s*[-*]\s|\s*\d+\.\s|!\[)/.test(lines[i])) { buf.push(lines[i]); i++ }
     out.push(`<p>${inline(buf.join(' '))}</p>`)
   }
   return out.join('\n')

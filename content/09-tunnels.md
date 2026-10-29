@@ -12,6 +12,8 @@ A **VPN** (Virtual Private Network) connects private networks or users securely 
 | **Server** | /interface pppoe-server server, /interface pptp-server server... | Accepts connections |
 | **Client** | /interface pppoe-client, pptp-client, l2tp-client, sstp-client | Connects out |
 
+![A PPP secret: name, password, service, profile and addresses (course slide)](/img/mtcna/na7-15.webp)
+
 Built-in profiles: **default** and **default-encryption**.
 
     /ip pool add name=ppp-pool ranges=1.1.1.2-1.1.1.200
@@ -30,12 +32,16 @@ Each connected client appears as a dynamic interface and in **PPP > Active Conne
     /interface pppoe-client add name=pppoe-out1 interface=ether1 user=class password=class \
         add-default-route=yes use-peer-dns=yes disabled=no
 
+![Laptop, your router as a PPPoE client and the classroom router as the server (course slide)](/img/mtcna/na7-10.webp)
+
 Authentication: pap, chap, mschap1, mschap2. When it is connected the interface shows the **R** (running) flag.
 
 ### PPPoE server
 
     /interface pppoe-server server add service-name=isp interface=ether2 \
         default-profile=5mbit one-session-per-host=yes max-sessions=100 disabled=no
+
+![PPPoE server settings in Winbox (course slide)](/img/mtcna/na7-14.webp)
 
 - Runs on an interface **without** an IP address being needed for clients.
 - **keepalive-timeout** (default 10 s) detects dead clients.
@@ -64,6 +70,8 @@ Authentication: pap, chap, mschap1, mschap2. When it is connected the interface 
 ### Site-to-site example (from the course)
 
 Office 1: WAN 77.77.77.77/24, LAN 192.168.10.0/24. Office 2: WAN 88.88.88.88/24, LAN 192.168.11.0/24. Tunnel addresses 172.16.1.1 and 172.16.1.2.
+
+![A PPTP tunnel between two offices (course slide)](/img/mtcna/na7-23.webp)
 
 Office 1 (server):
 

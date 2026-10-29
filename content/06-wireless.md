@@ -29,9 +29,13 @@ Same modulation as 802.11g (64-QAM), but: about 10% from MAC improvements (frame
 - Each channel is **22 MHz** wide (20 MHz for OFDM), so neighbouring channels overlap. The only **non-overlapping** channels are **1, 6 and 11**.
 - In the EU the limit is **100 mW EIRP** (20 dBm) in 2400-2483.5 MHz (ERC Recommendation 70-03).
 
+![The 2.4 GHz channels: only 1, 6 and 11 do not overlap at 20 MHz (course slide)](/img/mtcna/na9-18.webp)
+
 ### 5 GHz
 
 More channels and less interference; split into **UNII** bands. Some channels require **DFS** (Dynamic Frequency Selection): the device must listen for radar and leave the channel if radar is detected.
+
+![The 5 GHz UNII bands and the DFS channels (course slide)](/img/mtcna/na9-19.webp)
 
 ### Frequency mode and country
 
@@ -58,11 +62,15 @@ If the only option offered is regulatory-domain and you cannot change the countr
 
 **Scan** shows nearby APs (SSID, frequency, signal, MAC). Normal scanning **disconnects** the interface while it runs. Since v6.37 a **background scan** is possible on 802.11 that does not drop the connection.
 
+![The scan tool in station mode (course slide)](/img/mtcna/na9-33.webp)
+
     /interface wireless scan wlan1
 
 ### Connect list
 
 The **connect list** (station side) decides which APs the station may connect to. Rules match MAC, SSID, signal range and security profile and are checked **top to bottom**; *connect=yes/no*. Example: only connect to your AP's MAC when signal is better than -75 dBm.
+
+![A connect list picks one AP out of three (course slide)](/img/mtcna/na9-36.webp)
 
 # Lesson: Access point mode
 
@@ -93,9 +101,13 @@ Step by step:
 
 Shows the connected peers on **both** AP and station: MAC, radio name, uptime, signal strength, **tx/rx rate**, **signal-to-noise**, **CCQ** (Client Connection Quality, %). On the AP you see all clients, on a station you see the AP it is connected to.
 
+![The registration table shows the connected clients (course slide)](/img/mtcna/na9-43.webp)
+
 ### Access list (AP side)
 
 The **access list** decides which clients may connect to the AP. Rules (MAC, interface, signal-strength range, time) are processed **top to bottom**.
+
+![Access list with default-authenticate=no: only listed clients connect (course slide)](/img/mtcna/na9-49.webp)
 
 - **default-authenticate=yes** (interface setting): clients **not** in the access list are allowed.
 - **default-authenticate=no**: only clients in the access list with *authentication=yes* can connect.
@@ -109,9 +121,13 @@ Examples:
 
 **default-forward=yes** lets clients of the same AP talk to each other. **default-forward=no** isolates them (they can still reach the router and the Internet). The access list *forwarding* setting has priority over default-forward. With two isolated wlans in one bridge, clients of wlan1 can still talk to clients of wlan2 through the bridge, unless you also use bridge filters or horizon.
 
+![Client isolation: default-forward=no stops clients of one AP from talking to each other (course slide)](/img/mtcna/na9-57.webp)
+
 ### Virtual AP
 
 A **Virtual AP** adds another SSID on the same radio: a fully independent interface (own SSID, security profile, IP network: e.g. guests on 192.168.5.0/24 without WPA). Layer 1 settings (channel, width, band) are **inherited** from the master interface.
+
+![A virtual AP for guests on the same radio, in its own network (course slide)](/img/mtcna/na9-61.webp)
 
 # Lesson: Wireless security
 
@@ -150,6 +166,8 @@ The slides compare the same pair of 5 GHz dishes, back in 1999 with 802.11a:
 | **802.11a** real TCP throughput | ≈ 24.4 Mbps | ≈ 44 Mbps | **limited**: ACK timeouts of the standard break long links |
 | **Nstreme** real TCP throughput | ≈ 30 Mbps | ≈ 60 Mbps | **no distance limit** |
 
+![The same link with 802.11a and with Nstreme (course slide)](/img/mtcna/na9-75.webp)
+
 Two lessons from the table:
 
 - The channel rate is never the TCP speed. Standard 802.11 is half duplex and waits for an ACK after every frame (CSMA/CA), so roughly half the air time is overhead.
@@ -165,6 +183,8 @@ Two lessons from the table:
 ### Point-to-point bridge
 
 On side A: mode=**bridge** (or ap-bridge), on side B: **station-bridge**, both in a local bridge with Ethernet. Now both LANs are one Layer 2 network. Alternatives: **WDS** (wds-mode=dynamic) or station-pseudobridge.
+
+![A point-to-point bridge: bridge or ap-bridge on one side, station-bridge on the other (course slide)](/img/mtcna/na9-83.webp)
 
 ### Wireless tools
 

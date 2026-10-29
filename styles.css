@@ -349,3 +349,76 @@ code.gl { text-decoration: none; box-shadow: inset 0 -1px 0 color-mix(in srgb, v
 #k-log li.good, #k-log li .good { color: var(--good); }
 #k-log li.bad { color: var(--bad); }
 @media (max-width: 640px) { .hs { grid-template-columns: 1fr; } .hs-end { padding: 4px; } }
+
+/* ---------- MTCRE network labs ---------- */
+.net-topo { padding: 10px; margin-bottom: 10px; }
+.net-svg .w.down { stroke: var(--bad); stroke-dasharray: 4 6; opacity: .7; }
+.net-svg .w.silent { stroke: var(--warn); stroke-dasharray: 10 5; }
+.net-svg .w.host { stroke: var(--muted); stroke-width: 2; }
+.net-svg .x { font-size: 16px; font-weight: 700; }
+.net-svg .x.down { fill: var(--bad); } .net-svg .x.silent { fill: var(--warn); }
+.net-svg .ifl { font-family: var(--mono); font-size: 10px; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.net-svg .t.sm { font-size: 12px; }
+.net-svg .rtr { cursor: pointer; }
+.net-svg .rtr:focus { outline: none; }
+.net-svg .rtr:hover .r, .net-svg .rtr:focus .r { stroke-width: 2.5; }
+.net-svg .rtr.on .r { fill: var(--accent); }
+.net-svg .rtr.on .t { fill: #fff; }
+.net-svg .rtr.lk .r { fill: var(--surface-2); stroke: var(--muted); stroke-dasharray: 5 3; }
+.net-svg .rtr.lk.on .r { fill: var(--muted); }
+.rtabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.reach { list-style: none; padding: 0; margin: 6px 0 12px; }
+.reach li { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.reach li > b { width: 18px; flex-shrink: 0; }
+.reach li.good > b { color: var(--good); } .reach li.bad > b { color: var(--bad); }
+.reach li div { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.reach .why { margin: 2px 0 0; }
+.links { display: flex; flex-direction: column; gap: 6px; }
+.linkrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.linkrow select { font: inherit; font-size: .85rem; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+
+/* ---------- lesson figures and diagrams ---------- */
+.fig { margin: 18px 0; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: zoom-in; text-align: center; }
+.fig img, .fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.fig img { border-radius: 6px; }
+.fig figcaption { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+.fig.zoom { position: fixed; inset: 0; z-index: 50; margin: 0; border-radius: 0; display: flex; flex-direction: column; justify-content: center; background: color-mix(in srgb, var(--bg) 96%, transparent); cursor: zoom-out; overflow: auto; }
+.fig.zoom img, .fig.zoom svg { max-height: 86vh; width: auto; max-width: 96vw; }
+.fig.zoom svg { width: min(96vw, 1200px); }
+.dg text { fill: var(--text); font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
+.dg .t { font-weight: 600; font-size: 14px; }
+.dg .s { fill: var(--muted); font-size: 11px; }
+.dg .mono { font-family: var(--mono); font-size: 11.5px; }
+.dg .box { fill: var(--surface-2); stroke: var(--border); }
+.dg .rt { fill: var(--accent-soft); stroke: var(--accent); }
+.dg .ok { fill: var(--good-soft); stroke: var(--good); }
+.dg .no { fill: var(--bad-soft); stroke: var(--bad); }
+.dg .wa { fill: var(--surface); stroke: var(--warn); }
+.dg .ln { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+.dg .lm { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.dg .ld { stroke: var(--muted); stroke-width: 2; fill: none; stroke-dasharray: 6 4; }
+.dg .lg { stroke: var(--good); stroke-width: 2.5; fill: none; }
+.dg .lb { stroke: var(--bad); stroke-width: 2.5; fill: none; }
+.dg .lw { stroke: var(--warn); stroke-width: 2.5; fill: none; stroke-dasharray: 8 4; }
+.dg .ah { fill: var(--accent); } .dg .ahm { fill: var(--muted); } .dg .ahg { fill: var(--good); }
+.dg .fa { fill: var(--accent); } .dg .fg { fill: var(--good); } .dg .fb { fill: var(--bad); } .dg .fm { fill: var(--muted); }
+.dg .wt { fill: #fff; }
+
+/* ---------- MTCRE simulators ---------- */
+.steps { padding-left: 20px; }
+.steps li { margin: 6px 0; }
+.mtu-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); font-size: .72rem; margin: 6px 0 10px; }
+.mtu-bar span { display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; min-width: 34px; }
+.mtu-bar .hdr { background: var(--accent); color: #fff; border-right: 1px solid var(--surface); }
+.mtu-bar .pay { background: var(--good-soft); color: var(--text); }
+.topo-svg .w.spt { stroke: var(--good); stroke-width: 5; }
+.topo-svg .cost { cursor: pointer; }
+.topo-svg .cost circle { fill: var(--surface); stroke: var(--accent); }
+.topo-svg .cost text { fill: var(--text); font-size: 12px; font-weight: 600; }
+.topo-svg .rtr.on .r { fill: var(--accent); } .topo-svg .rtr.on .t { fill: #fff; }
+.topo-svg .rtr.done .r { stroke: var(--good); stroke-width: 2.5; }
+.net-lab .term-out { height: min(44vh, 400px); }
+/* MTCTCE lab probes */
+.probe { margin: 12px 0; }
+.probe h4 { margin: 0 0 6px; }
+table.mini td { padding: 3px 8px; font-size: .85rem; vertical-align: top; }
