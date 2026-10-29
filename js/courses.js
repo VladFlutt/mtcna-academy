@@ -1,13 +1,13 @@
 import { T } from './i18n.js'
-// Course sections of the academy. MTCNA and MTCSE have content; the others show a "coming soon" page.
+// Course sections of the academy. MTCNA, MTCSE and MTCRE have content; the others show a "coming soon" page.
 
 export const COURSES = [
   { id: 'mtcna', code: 'MTCNA', icon: '🌐', ready: true, href: '#/mtcna',
     name: 'MikroTik Certified Network Associate',
     desc: T('The entry certification: RouterOS basics, DHCP, bridging, routing, wireless, firewall and NAT, QoS, tunnels and tools.', 'Начальная сертификация: основы RouterOS, DHCP, бриджи, маршрутизация, беспроводные сети, файрвол и NAT, QoS, туннели и инструменты.'),
     topics: [] },
-  { id: 'mtcre', code: 'MTCRE', icon: '🧭', name: 'MikroTik Certified Routing Engineer',
-    desc: T('Routing in depth: static routes and route selection, tunnels, OSPF.', 'Маршрутизация углублённо: статические маршруты и выбор маршрута, туннели, OSPF.'),
+  { id: 'mtcre', code: 'MTCRE', icon: '🧭', ready: true, href: '#/mtcre', name: 'MikroTik Certified Routing Engineer',
+    desc: T('Routing in depth: route selection, static and recursive routes, policy routing, tunnels and OSPF, practised in networks of several routers.', 'Маршрутизация углублённо: выбор маршрута, статические и рекурсивные маршруты, маршрутизация по политикам, туннели и OSPF, с практикой в сетях из нескольких маршрутизаторов.'),
     topics: T(['Static routing, recursive routes, ECMP', 'Point-to-point addressing', 'Tunnels: IPIP, EoIP, GRE, VPN', 'Dynamic routing with OSPF'], ['Статическая маршрутизация, рекурсивные маршруты, ECMP', 'Адресация точка-точка', 'Туннели: IPIP, EoIP, GRE, VPN', 'Динамическая маршрутизация OSPF']) },
   { id: 'mtcswe', code: 'MTCSWE', icon: '🔀', name: 'MikroTik Certified Switching Engineer',
     desc: T('Switching: bridge and switch chip, VLAN, spanning tree, link aggregation and L2 security.', 'Коммутация: бридж и чип коммутатора, VLAN, связующее дерево, агрегирование каналов и безопасность L2.'),

@@ -682,11 +682,14 @@ export function laptopInternet(st) {
 // ---------- CLI ----------
 function tokenize(line) {
   const out = []
-  let cur = '', q = false, started = false
+  let cur = '', q = false, started = false, br = 0
   for (let i = 0; i < line.length; i++) {
     const ch = line[i]
     if (ch === '"') { q = !q; started = true; continue }
-    if (!q && /\s/.test(ch)) { if (started) { out.push(cur); cur = ''; started = false } continue }
+    // [find ...] stays one token
+    if (!q && ch === '[') br++
+    if (!q && ch === ']' && br) br--
+    if (!q && !br && /\s/.test(ch)) { if (started) { out.push(cur); cur = ''; started = false } continue }
     if (!q && ch === '\\' && i === line.length - 1) continue
     cur += ch; started = true
   }
@@ -698,7 +701,7 @@ function splitPathTokens(tokens) {
   // support /ip/address/print style
   const res = []
   tokens.forEach((t, i) => {
-    if (t.includes('=') || t === '/' || t === '..') { res.push(t); return }
+    if (t.includes('=') || t === '/' || t === '..' || t.startsWith('[')) { res.push(t); return }
     if (t.includes('/') && !/^\d/.test(t)) {
       const parts = t.split('/')
       if (t.startsWith('/')) res.push('/')
@@ -761,7 +764,7 @@ export class RouterOS {
     const kv = {}, pos = []
     for (const a of args) {
       const k = a.indexOf('=')
-      if (k > 0) kv[a.slice(0, k)] = a.slice(k + 1)
+      if (k > 0 && !a.startsWith('[')) kv[a.slice(0, k)] = a.slice(k + 1)
       else pos.push(a)
     }
     return { kv, pos }
@@ -853,14 +856,22 @@ export class RouterOS {
     const list = this.items(path)
     const lp = this.st.lastPrint[path] || list.map((x, n) => x['.id'] ?? x.name)
     const out = []
-    for (const ref of refs.flatMap((r) => r.split(','))) {
+    for (const ref of refs.flatMap((r) => r.startsWith('[') ? [r] : r.split(','))) {
       if (/^\d+$/.test(ref)) {
         const id = lp[Number(ref)]
         const it = list.find((x) => (x['.id'] ?? x.name) === id)
         if (!it) this._err(`no such item`)
         out.push(it)
       } else if (/^\[find/.test(ref)) {
-        this._err('[find ...] expressions are not simulated; use item numbers or names')
+        // [find], [find key=value ...] and [find where key=value ...]: every condition must match
+        const conds = ref.replace(/^\[find\s*(where\s+)?|\]$/g, '').trim().split(/\s+/).filter(Boolean).map((c) => {
+          const i = c.indexOf('=')
+          if (i < 1) this._err('only key=value conditions are simulated inside [find ...]')
+          return [c.slice(0, i), c.slice(i + 1)]
+        })
+        const defs = (MENUS[path] && MENUS[path].defaults) || {}
+        const val = (x, k) => String(x[k] ?? (k === 'dst-address' && path === 'ip route' ? '0.0.0.0/0' : defs[k] ?? ''))
+        out.push(...list.filter((x) => conds.every(([k, v]) => val(x, k) === v)))
       } else {
         const it = list.find((x) => x.name === ref || x.interface === ref && !('name' in x) || x.address === ref || x['mac-address'] === ref)
         if (!it) this._err(`no such item (4)`)

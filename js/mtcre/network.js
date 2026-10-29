@@ -579,7 +579,9 @@ function send(S, from, src, dst, opts = {}) {
     pk.inIf = o.iface
     first = false
   }
-  return { ok: false, why: 'too many hops', path, nodes }
+  // name the routers that keep passing the packet back and forth
+  const loop = [...new Set(nodes.slice(-6))]
+  return { ok: false, why: `routing loop: the packet circles between ${loop.join(' and ')} until its TTL expires`, path, nodes, status: 'TTL exceeded' }
 }
 
 function findOwnerInSeg(S, seg, ip, self) {
