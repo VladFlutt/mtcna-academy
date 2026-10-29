@@ -1,8 +1,8 @@
 # Academy MikroTik (Академия MikroTik)
 
-Interactive training platform for MikroTik certification courses. The academy home (`#/`) lists the course sections: **MTCNA** (`#/mtcna`) and **MTCSE** (`#/mtcse`) are complete, and MTCRE, MTCSWE, MTCWE, MTCTCE, MTCUME, MTCINE and MTCIPv6E have "coming soon" pages (`js/courses.js`).
+Interactive training platform for MikroTik certification courses. The academy home (`#/`) lists the course sections: **MTCNA** (`#/mtcna`), **MTCSE** (`#/mtcse`) and **MTCRE** (`#/mtcre`) are complete, and MTCSWE, MTCWE, MTCTCE, MTCUME, MTCINE and MTCIPv6E have "coming soon" pages (`js/courses.js`).
 
-- **Glossary** (`#/glossary`, `js/glossary.js`): about 320 networking, RouterOS and security terms in English and Russian, with search and categories. Terms and abbreviations in lessons, labs and simulators are highlighted automatically and show a short explanation on click (`js/terms.js`). Tooltips are off inside a quiz or exam until it is submitted, so they cannot give answers away.
+- **Glossary** (`#/glossary`, `js/glossary.js`): about 345 networking, RouterOS and security terms in English and Russian, with search and categories. Terms and abbreviations in lessons, labs and simulators are highlighted automatically and show a short explanation on click (`js/terms.js`). Tooltips are off inside a quiz or exam until it is submitted, so they cannot give answers away.
 
 ## MTCNA section
 
@@ -32,6 +32,17 @@ Routes start with `#/mtcse` (data in `js/mtcse/`, lessons in `content/mtcse/` an
 - **Quizzes:** 126 questions at the level of the real exam, 18 per module, 80% to pass each module.
 - **Final exam:** 25 random questions, 60 minutes, 60% to pass.
 
+## MTCRE section
+
+Routes start with `#/mtcre` (data in `js/mtcre/`, lessons in `content/mtcre/` and `content/ru/mtcre/`, diagrams and slide figures in `img/mtcre/`). Lessons teach RouterOS 7, with the RouterOS 6 commands from the course slides as side notes.
+
+- **Theory:** 6 modules and 26 lessons: routing fundamentals (RIB and FIB, distance, longest prefix match, ECMP, gateways), static routing and failover (check-gateway, recursive routes, scope and target-scope), policy routing (routing tables, routing rules, mangle marks, two ISPs), point-to-point addressing, VLANs and tunnels (/32 addresses, GRE, IPIP, EoIP, WireGuard, MTU), OSPF concepts and OSPF configuration in RouterOS 7 (areas, stub and NSSA, summaries, default route, redistribution, routing filters).
+- **Network labs:** 11 labs on small multi-router networks (`js/mtcre/network.js`). Every router has its own terminal; a topology view, a reachability panel that follows packets hop by hop (routes, routing rules, mangle, NAT, rp-filter, tunnels, OSPF) and link controls (down or silent failure) show the result after every command.
+- **Simulators:** route selection, recursive next hop, policy routing walk, tunnel overhead and MTU, OSPF SPF stepper, DR/BDR election, OSPF area types and LSAs.
+- **Figures:** SVG diagrams that follow the light and dark theme, plus crops of course slides marked "(course slide)". Click a figure to enlarge it.
+- **Quizzes:** 100 questions, 80% to pass each module.
+- **Final exam:** 25 random questions, 60 minutes, 60% to pass.
+
 ## Run locally
 
 It is a static site with no build step:
@@ -46,4 +57,4 @@ Import the repository in Vercel with the "Other" preset; no build command or out
 
 ## Sources
 
-Course slides (MTCNA chapters 2 to 9; all MTCSE chapters: Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels) and the official MikroTik documentation (help.mikrotik.com). Not affiliated with or endorsed by MikroTik.
+Course slides (MTCNA chapters 2 to 9; all MTCSE chapters: Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels; the MTCRE slides on static routing, tunnels and OSPF) and the official MikroTik documentation (help.mikrotik.com). Not affiliated with or endorsed by MikroTik.
