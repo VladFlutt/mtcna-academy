@@ -1,8 +1,8 @@
 # Academy MikroTik (Академия MikroTik)
 
-Interactive training platform for MikroTik certification courses. The academy home (`#/`) lists the course sections: **MTCNA** (`#/mtcna`), **MTCSE** (`#/mtcse`) and **MTCRE** (`#/mtcre`) are complete, and MTCSWE, MTCWE, MTCTCE, MTCUME, MTCINE and MTCIPv6E have "coming soon" pages (`js/courses.js`).
+Interactive training platform for MikroTik certification courses. The academy home (`#/`) lists the course sections: **MTCNA** (`#/mtcna`), **MTCSE** (`#/mtcse`), **MTCRE** (`#/mtcre`) and **MTCTCE** (`#/mtctce`) are complete, and MTCSWE, MTCWE, MTCUME, MTCINE and MTCIPv6E have "coming soon" pages (`js/courses.js`).
 
-- **Glossary** (`#/glossary`, `js/glossary.js`): about 345 networking, RouterOS and security terms in English and Russian, with search and categories. Terms and abbreviations in lessons, labs and simulators are highlighted automatically and show a short explanation on click (`js/terms.js`). Tooltips are off inside a quiz or exam until it is submitted, so they cannot give answers away.
+- **Glossary** (`#/glossary`, `js/glossary.js`): about 360 networking, RouterOS and security terms in English and Russian, with search and categories. Terms and abbreviations in lessons, labs and simulators are highlighted automatically and show a short explanation on click (`js/terms.js`). Tooltips are off inside a quiz or exam until it is submitted, so they cannot give answers away.
 
 ## MTCNA section
 
@@ -43,6 +43,17 @@ Routes start with `#/mtcre` (data in `js/mtcre/`, lessons in `content/mtcre/` an
 - **Quizzes:** 100 questions, 80% to pass each module.
 - **Final exam:** 25 random questions, 60 minutes, 60% to pass.
 
+## MTCTCE section
+
+Routes start with `#/mtctce` (data and the traffic engine in `js/mtctce/`, lessons in `content/mtctce/` and `content/ru/mtctce/`, diagrams in `img/mtctce/`). Lessons teach RouterOS 7, with the RouterOS 6 differences as side notes.
+
+- **Theory:** 7 modules and 29 lessons: DNS in depth (cache, static entries and regexps, forced DNS), DHCP in depth (DORA and timers, options and option 121, backup servers, authoritative, rogue server alerts, relay), web proxy (transparent proxy, access rules with wildcards and regexps, cache), packet flow (the five chains, queues in the flow, use-ip-firewall, FastTrack), firewall and attacks (connection states, service ports, custom chains, matchers, DSCP and ICMP, psd, connection-limit, SYN cookies, RAW), NAT and mangle (hairpin NAT, connection, packet and routing marks, passthrough, DSCP, TTL and MSS) and QoS (queue types incl. CAKE and fq_codel, PCQ and burst maths, simple queues, HTB and queue trees).
+- **Labs:** 12 labs on a simulated router, checked by behaviour: DNS answers, DHCP options as the client decodes them, proxy decisions for real host names, packets walked through filter, NAT and mangle, a replayed port scan, and the bandwidth HTB gives each queue (`js/mtctce/engine.js`). The CLI simulator gained `/ip dns static` types and regexp, `/ip dns cache`, DHCP options, option sets, relay and alerts, `/ip proxy`, queue trees, queue types and more mangle actions and matchers.
+- **Simulators:** option 121 encoder, packet flow walker, HTB allocator (with the allocation examples from the course slides), port scan and connection flood detector, proxy and DNS pattern tester, plus the burst, PCQ and firewall simulators.
+- **Figures:** 9 SVG diagrams that follow the theme. The MTCTCE slide decks carry a training centre watermark, so no slide crops are used.
+- **Quizzes:** 126 questions, 18 per module, 80% to pass each module.
+- **Final exam:** 25 random questions, 60 minutes, 60% to pass.
+
 ## Run locally
 
 It is a static site with no build step:
@@ -57,4 +68,4 @@ Import the repository in Vercel with the "Other" preset; no build command or out
 
 ## Sources
 
-Course slides (MTCNA chapters 2 to 9; all MTCSE chapters: Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels; the MTCRE slides on static routing, tunnels and OSPF) and the official MikroTik documentation (help.mikrotik.com). Not affiliated with or endorsed by MikroTik.
+Course slides (MTCNA chapters 2 to 9; all MTCSE chapters: Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels; the MTCRE slides on static routing, tunnels and OSPF; both parts of the MTCTCE slides) and the official MikroTik documentation (help.mikrotik.com). Not affiliated with or endorsed by MikroTik.
