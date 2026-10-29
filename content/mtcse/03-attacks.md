@@ -34,6 +34,10 @@ The router then ignores fake ARP replies about the hosts. (Clients can still be 
 - **Rogue DHCP server**: someone connects a home router or misconfigures a PC. Clients get a **wrong gateway or DNS**, either by accident or to redirect them.
 - **DHCP starvation**: the attacker requests leases with **many fake MAC addresses** until the pool is empty; real clients get nothing (and a rogue server can take over).
 
+![Port security on the switch stops DHCP starvation: one MAC address per port (course slide)](/img/mtcse/se3-16.webp)
+
+![DHCP snooping: only the trusted port may answer as a DHCP server (course slide)](/img/mtcse/se3-20.webp)
+
 Protection:
 
     /ip dhcp-server alert add interface=bridgeLAN valid-server=D4:CA:6D:00:00:01 on-alert=":log warning rogue"
@@ -107,6 +111,10 @@ An administrator who logs in once or twice never reaches the blacklist, and the 
 
 - **DoS** (Denial of Service): one source overloads a service or link.
 - **DDoS** (Distributed DoS): the traffic comes from **many sources** (often a botnet). Blocking one address does not help.
+
+![The TCP three-way handshake: SYN, SYN-ACK, ACK (course slide)](/img/mtcse/se3-22.webp)
+
+![SYN flood: the server keeps half-open connections until its queue is full (course slide)](/img/mtcse/se3-23.webp)
 
 Common types:
 
@@ -192,6 +200,8 @@ A **ping flood** is simply more ICMP echo requests than the target can answer. A
 3. The **destination is a broadcast address**, for example 192.168.88.255.
 4. Every host on that subnet answers.
 5. All the answers arrive at the victim, who never sent anything.
+
+![Smurf: a ping to a broadcast address with a spoofed source makes every host reply to the victim (course slide)](/img/mtcse/se3-50.webp)
 
 One packet in, a hundred packets out, and the attacker's own address never appears. The defences are layered:
 

@@ -30,6 +30,8 @@
         chain=input dst-port=33333 protocol=tcp src-address-list=knock2
     add action=drop chain=input dst-port=8291 protocol=tcp src-address-list=!knock-final
 
+![Правила port knocking со слайдов (слайд курса)](/img/mtcse/se5-04.webp)
+
 `!` в `src-address-list=!knock-final` означает **НЕ**: правило срабатывает для источников, которых **нет** в списке.
 
 ### Проследим стук пошагово
@@ -163,11 +165,15 @@ Port knocking это **дополнительный слой**, а не заме
 - **Красный сервер** находится за ним и с вашего ПК недоступен.
 - `ssh -L 8080:red:80 user@blue` делает так, что `http://127.0.0.1:8080` на вашем ПК показывает веб-страницу красного. Соединение к красному за вас открывает SSH-сервер (синий).
 
+![SSH-туннель проводит незашифрованный сервис через файрвол (слайд курса)](/img/mtcse/se5-09.webp)
+
 ### RouterOS как SSH-сервер
 
 Сначала маршрутизатор должен разрешить проброс:
 
     /ip ssh set forwarding-enabled=both
+
+![Локальная переадресация через RouterOS по шагам (слайд курса)](/img/mtcse/se5-10.webp)
 
 Значения: **no** (по умолчанию), **local** (`-L` от клиентов), **remote** (`-R`), **both**.
 

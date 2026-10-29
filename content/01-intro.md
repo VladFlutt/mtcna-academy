@@ -44,15 +44,25 @@
 - **PoE-in** on almost all models; many models also have PoE-out.
 - **Very low power**: an RB750 uses at most 2.5 W, an RB951-2n about 3 W.
 
+![A RouterBOARD with WAN and LAN ports: every Ethernet port is independent, and most devices take PoE in (course slide)](/img/mtcna/na3-05.webp)
+
 ### Device families
 
 - **Embedded boards**: a bare board you install into your own enclosure (e.g. RB433, RB912).
 - **Integrated devices**: board, enclosure and antenna in one product (e.g. SXT, LHG, hAP).
 - **Indoor / rackmount**: hAP, hEX, RB2011, RB4011, CCR, CRS.
 
+![Product classes: embedded boards, integrated solutions, indoor and rackmount devices (course slide)](/img/mtcna/na3-08.webp)
+
 ### Decoding product names
 
 A name such as **RB952Ui-5ac2nD-TC** is read in three parts: **board**, **wireless**, **enclosure**.
+
+![Reading a product name: RB, series 4, 9 Ethernet ports, 3 miniPCI slots (course slide)](/img/mtcna/na3-11.webp)
+
+![CCR1036-8g-2s+em: Cloud Core Router, series 1, 36 cores, 8 gigabit ports, 2 SFP+, extra memory (course slide)](/img/mtcna/na3-14.webp)
+
+![CRS326-24g-2s+rm: Cloud Router Switch, series 3, 26 ports, 24 gigabit, 2 SFP+, rackmount (course slide)](/img/mtcna/na3-15.webp)
 
 **Board name**
 
@@ -96,6 +106,8 @@ Routing (static, OSPF, BGP, RIP), firewall and NAT, bridging and VLANs, wireless
 ### Licence levels
 
 The licence is tied to the device. On RouterBOARD it is pre-installed and **cannot be upgraded** to a higher level. You can see it in **System > License**.
+
+![What each licence level allows (course slide)](/img/mtcna/na4-48.webp)
 
 | Level | Name | Main limits |
 |---|---|---|
@@ -159,10 +171,14 @@ Netinstall is a Windows (and Linux CLI) tool that reinstalls RouterOS over the n
 - **6.x**: features were added fast and stability suffered, so v6 was split into three **channels**: *long-term*, *stable* and *testing (beta)*.
 - **7.x**: current generation, also published as long-term, stable and testing.
 
+![RouterOS versions over the years and their release channels (course slide)](/img/mtcna/x5-39.webp)
+
 ### Packages in v6 vs v7
 
 - **v6**: the *main* package (e.g. routeros-mipsbe) is a bundle of sub-packages (system, dhcp, routing, ppp, wireless, security, ipv6, mpls, hotspot...). Inside a bundle you can only **enable/disable** sub-packages, not uninstall them. Separate *extra* packages can be uninstalled.
 - **v7**: one main package **routeros** with almost everything; **extra** packages (wifi-qcom, container, user-manager, dude, ups...) are installed separately.
+
+![Packages: many separate packages in v6, one main package plus extras in v7 (course slide)](/img/mtcna/x5-41.webp)
 
 ### Manual upgrade or downgrade
 
@@ -175,6 +191,8 @@ Netinstall is a Windows (and Linux CLI) tool that reinstalls RouterOS over the n
 
 After every RouterOS upgrade compare **current-firmware** with **upgrade-firmware** in **System > RouterBOARD**. If upgrade-firmware is newer, click **Upgrade** and reboot (`/system routerboard upgrade`, `/system reboot`).
 
+![Upgrading RouterBOOT after a RouterOS upgrade: compare current and upgrade firmware, then reboot (course slide)](/img/mtcna/x5-52.webp)
+
 ### Netinstall in detail
 
 - Use it to install/reinstall RouterOS when the OS does not boot, is missing, or misbehaves. Windows GUI and Linux CLI versions.
@@ -183,6 +201,8 @@ After every RouterOS upgrade compare **current-firmware** with **upgrade-firmwar
 - Connect the cable to the port labelled **BOOT** (usually **ether1**).
 - Make the router boot from Ethernet: set *boot device = try-ethernet-once-then-nand* in System > RouterBOARD > Settings, select it in the RouterBOOT console, or hold the **reset button ~15 s** while powering on.
 - Select the router, browse to the .npk files, optionally a **configure script** (.rsc applied as the new default config), then **Install**.
+
+![Netinstall: the PC and the router in one Ethernet segment, the router boots from the network (course slide)](/img/mtcna/x3-09.webp)
 
 ### Device-mode (v7)
 

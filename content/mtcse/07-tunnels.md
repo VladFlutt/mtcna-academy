@@ -24,6 +24,8 @@ The labs in this module use the slide examples: the client gets 10.1.1.2 or 10.1
 - It works over **UDP port 1701**.
 - L2TP **does not provide encryption** itself, so it is **used together with IPsec**.
 
+![L2TP/IPsec lab setup: a laptop connects to the office over the Internet (course slide)](/img/mtcse/se7-03.webp)
+
 Inside, L2TP carries **PPP**, so you get everything you know from MTCNA: PPP secrets, profiles, pools, authentication (pap, chap, mschap1, mschap2).
 
 ### Server configuration from the slides
@@ -79,6 +81,8 @@ The last rule is the important one: **ipsec-policy=in,ipsec** matches only packe
 3. **SSTP over HTTPS**: the SSTP control messages.
 4. **IP binding**: PPP authentication and address assignment.
 5. **SSTP tunnel**: data flows.
+
+![SSTP stages: TCP, SSL, SSTP over HTTPS, IP binding, the tunnel (course slide)](/img/mtcse/se7-09.webp)
 
 Two RouterOS devices **can build SSTP even without certificates**; this is **not in line with the Microsoft standard**, and Windows clients always need a certificate they trust.
 
@@ -166,6 +170,8 @@ A normal **policy** names fixed subnets and the peer. Road warriors have **unkno
 ### Variante 1 from the slides, step by step
 
 **Step 1. Certificates** (self-signed CA, server and client, as in module 4). The slides use CN 2.2.2.2 and note that a **DNS name is better**. The server certificate must contain the address or name the clients use in **subject-alt-name**; Windows checks it.
+
+![IKEv2 road warrior: the server and the clients (course slide)](/img/mtcse/se7-17.webp)
 
     /certificate
     add name=ca common-name=ca key-usage=key-cert-sign,crl-sign

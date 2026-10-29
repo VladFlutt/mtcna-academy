@@ -12,6 +12,8 @@
 | **Сервер** | /interface pppoe-server server, /interface pptp-server server... | Принимает подключения |
 | **Клиент** | /interface pppoe-client, pptp-client, l2tp-client, sstp-client | Подключается наружу |
 
+![PPP secret: имя, пароль, сервис, профиль и адреса (слайд курса)](/img/mtcna/na7-15.webp)
+
 Встроенные профили: **default** и **default-encryption**.
 
     /ip pool add name=ppp-pool ranges=1.1.1.2-1.1.1.200
@@ -30,12 +32,16 @@
     /interface pppoe-client add name=pppoe-out1 interface=ether1 user=class password=class \
         add-default-route=yes use-peer-dns=yes disabled=no
 
+![Ноутбук, ваш маршрутизатор как PPPoE-клиент и маршрутизатор класса как сервер (слайд курса)](/img/mtcna/na7-10.webp)
+
 Аутентификация: pap, chap, mschap1, mschap2. После подключения интерфейс показывает флаг **R** (running).
 
 ### PPPoE-сервер
 
     /interface pppoe-server server add service-name=isp interface=ether2 \
         default-profile=5mbit one-session-per-host=yes max-sessions=100 disabled=no
+
+![Настройки PPPoE-сервера в Winbox (слайд курса)](/img/mtcna/na7-14.webp)
 
 - Работает на интерфейсе, и IP-адрес для клиентов на нём **не** нужен.
 - **keepalive-timeout** (по умолчанию 10 с) обнаруживает пропавших клиентов.
@@ -64,6 +70,8 @@
 ### Пример site-to-site (из курса)
 
 Office 1: WAN 77.77.77.77/24, LAN 192.168.10.0/24. Office 2: WAN 88.88.88.88/24, LAN 192.168.11.0/24. Адреса туннеля 172.16.1.1 и 172.16.1.2.
+
+![PPTP-туннель между двумя офисами (слайд курса)](/img/mtcna/na7-23.webp)
 
 Office 1 (сервер):
 

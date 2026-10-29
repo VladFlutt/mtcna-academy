@@ -2,6 +2,8 @@
 
 **Queues** limit and prioritise traffic. The easiest tool is the **simple queue** (**Queues > Simple Queues**).
 
+![A simple queue: target and max-limit (course slide)](/img/mtcna/na8-06.webp)
+
     /queue simple add name=laptop target=192.168.88.254/32 max-limit=1M/1M
 
 - **target**: whose traffic is limited: an IP, subnet, several addresses or an **interface**.
@@ -32,6 +34,8 @@ Limit your laptop to 1M/1M, then run a speed test and watch with **Torch**.
 # Lesson: Burst
 
 **Burst** lets a client exceed max-limit for a short time, which makes browsing feel fast while large downloads are still limited.
+
+![Burst: the rate goes up to burst-limit while the average stays under burst-threshold (course slide)](/img/mtcna/na8-19.webp)
 
 Parameters (per direction):
 
@@ -69,6 +73,10 @@ With max-limit=512k:
 | 0 | 2 | 256k |
 | 0 | 8 | 64k |
 
+![pcq-rate=128000: each user gets at most 128k (course slide)](/img/mtcna/na8-36.webp)
+
+![pcq-rate=0: the bandwidth is shared equally between active users (course slide)](/img/mtcna/na8-39.webp)
+
 Built-in queue types include **default** (pfifo), **default-small**, **ethernet-default**, **wireless-default** (sfq), **synchronous-default** (red), **hotspot-default** (sfq), **pcq-download-default**, **pcq-upload-default**, **only-hardware-queue** and **multi-queue-ethernet-default**.
 
 > Try the **PCQ simulator**.
@@ -94,6 +102,8 @@ Marking every packet by its addresses and ports costs CPU. Mark the **connection
     /queue simple add name=WEB_Limit target=192.168.33.0/24 packet-marks=web_packet \
         max-limit=2M/2M queue=pcq-upload-default/pcq-download-default
 
+![Connection marks are set once; packet marks feed the queues](/img/mtctce/marks.svg)
+
 ### Lab 9.2
 
 1. Limit every LAN user to 1M (PCQ).
@@ -105,3 +115,7 @@ Marking every packet by its addresses and ports costs CPU. Mark the **connection
 - **Torch** (**Tools > Torch**): real-time traffic on an interface, filtered and grouped by src/dst address, port, protocol, VLAN. Perfect to find "who is using my bandwidth".
 - **Graphing** (**Tools > Graphing**): long-term graphs of interfaces, queues and resources, viewed in a browser at **http://router-ip/graphs/**. Set *allow-address* to control who may view them.
 - **Bandwidth Test** (**Tools > Bandwidth Test**): measure throughput between two MikroTik devices (or with the Windows btest.exe) using TCP or UDP, send/receive/both. The **BTest server** (`/tool bandwidth-server`) must be enabled on the far end; it uses TCP 2000 and UDP 2001-2100+, max sessions 100. Testing to the router itself measures its CPU too: test **through** the router when possible.
+
+![Torch shows the live traffic on an interface (course slide)](/img/mtcna/na8-11.webp)
+
+![Graphs in the browser: http://router/graphs/ (course slide)](/img/mtcna/na8-45.webp)

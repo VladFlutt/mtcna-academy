@@ -17,11 +17,17 @@
 - The default configuration on a home router: **ether1 = WAN** (DHCP client), other ports in a **bridge** with **192.168.88.1/24**, a DHCP server, NAT masquerade and a basic firewall.
 - **MAC-Winbox** works even when the router has no IP address. The **Neighbors** tab in Winbox discovers devices using **MNDP** (MikroTik Neighbor Discovery Protocol), **CDP** and **LLDP** (UDP 5678 for MNDP).
 
+![Winbox login: connect to the MAC address or to the IP address of the router (course slide)](/img/mtcna/na4-12.webp)
+
+![The Neighbors tab lists routers found by MNDP, CDP and LLDP (course slide)](/img/mtcna/na4-13.webp)
+
 ### Lab 2.1 (from the course)
 
 1. Reset the router to default configuration.
 2. Connect the laptop to one of the ports **ether2-ether5**.
 3. Open Winbox, go to Neighbors and connect using the **MAC address**.
+
+![QuickSet: the basic settings in one window (course slide)](/img/mtcna/na4-19.webp)
 
 ### Resetting the router
 
@@ -29,6 +35,10 @@ The password **cannot** be reset on its own. Your options are:
 
 1. **Reset the configuration** using the reset button.
 2. **Netinstall** (reinstall RouterOS).
+
+![Reset with the button: hold RES while powering on, release when the ACT LED starts blinking (course slide)](/img/mtcna/na4-07.webp)
+
+![System > Reset Configuration with its options (course slide)](/img/mtcna/na4-42.webp)
 
 **Reset button (RES)** behaviour when held while powering on:
 
@@ -48,6 +58,8 @@ You can also reset in software: **System > Reset Configuration** with options *K
 ### Structure
 
 The CLI is organised as a tree of **menus**: `/interface`, `/ip address`, `/ip route`, `/system identity`... Each menu has **commands**: `print`, `add`, `set`, `remove`, `enable`, `disable`, `export`, `find`...
+
+![The terminal inside Winbox (course slide)](/img/mtcna/na4-23.webp)
 
     [admin@MikroTik] > /ip address
     [admin@MikroTik] /ip address> add address=192.168.88.1/24 interface=bridge
@@ -110,6 +122,8 @@ A good practice: create your own *full* user, then **disable or remove admin**. 
 | winbox | 8291 | enabled |
 | api-ssl | 8729 | enabled |
 
+![IP > Services: the management services and their ports (course slide)](/img/mtcna/na4-31.webp)
+
 (Defaults vary slightly between versions.) Hardening checklist:
 
 1. **Disable** services you do not use: `/ip service disable telnet,ftp,www,api,api-ssl`
@@ -137,6 +151,10 @@ A good practice: create your own *full* user, then **disable or remove admin**. 
 - **Dashboard** (Winbox 4 / WebFig) gives a quick overview.
 - **Log**: `/log print`.
 
+![System > Resources: CPU, memory, uptime and storage (course slide)](/img/mtcna/na4-26.webp)
+
+![Interface flags: R running, S slave in a bridge, D dynamic, X disabled (course slide)](/img/mtcna/na5-35.webp)
+
 # Lesson: Backup, export and files
 
 ### Two kinds of backup
@@ -149,6 +167,8 @@ A good practice: create your own *full* user, then **disable or remove admin**. 
 | Partial | No, whole configuration | Yes, any menu (e.g. only `/ip address`) |
 | Restore | Same device (or identical model) | Any device, by `import` |
 | Where | Files > Backup, `/system backup save` | **CLI only**: `export` |
+
+![Files > Backup creates a binary backup of the configuration (course slide)](/img/mtcna/na4-38.webp)
 
 Default backup name: **identity-date-time.backup**.
 

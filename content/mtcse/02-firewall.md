@@ -111,6 +111,8 @@ A packet that **arrives** at the router goes through:
 5. **Mangle input → filter input** (to the router itself), or **mangle forward → filter forward** (through the router).
 6. For forwarded packets: **mangle postrouting**, **NAT srcnat**, then out.
 
+![The packet flow: prerouting, routing decision, input or forward or output, postrouting](/img/mtctce/packet-flow.svg)
+
 A packet **created by the router** (its own ping, DNS query, VPN packet) goes: **RAW output → connection tracking → mangle output → filter output → postrouting**.
 
 | Table | Chains | Typical use |
@@ -260,6 +262,8 @@ Neither is better; they are a pair. The MTCSE pattern is **stateful in filter fo
 ### Security areas
 
 A **security area** is simply a group of interfaces that you trust the same way. RouterOS expresses it with **interface lists**, and the slides draw two: a red WAN area and a green LAN area.
+
+![Security areas: WAN and LAN interface lists (course slide)](/img/mtcse/se22-40.webp)
 
     /interface list
     add name=WAN

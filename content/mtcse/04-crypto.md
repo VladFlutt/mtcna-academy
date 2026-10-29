@@ -2,9 +2,13 @@
 
 You do not need mathematics to use VPNs, but you need to know which building block does what. Otherwise the many parameters of IPsec and TLS look like magic.
 
+![Early ciphers: the Polybius square, the Caesar cipher and the Spartan scytale (course slide)](/img/mtcse/se4-03.webp)
+
 ### Symmetric encryption
 
 **One key** encrypts and decrypts. Fast, used for the actual data.
+
+![AES key sizes and the time to crack them (course slide)](/img/mtcse/se4-08.webp)
 
 - Algorithms: **AES** (128/192/256 bit keys), ChaCha20; old: DES, 3DES, Blowfish.
 - Modes: **CBC** (classic), **GCM** (encrypts **and** authenticates in one step, preferred today).
@@ -38,9 +42,13 @@ A **hash** turns any data into a fixed-size fingerprint: **SHA-256** gives 256 b
 3. Bob calculates the hash himself and checks the signature with **Alice's public key**.
 4. If both match, the message is from Alice and was not changed.
 
+![A digital signature combines a hash and asymmetric encryption (course slide)](/img/mtcse/se4-13.webp)
+
 ### Diffie-Hellman
 
 **Diffie-Hellman (DH)** lets two sides agree on a **shared secret** over an insecure network, without ever sending the secret. Each side sends a public value; from the other side's public value and its own private value, both compute the same secret. An eavesdropper sees only the public values.
+
+![Asymmetric cryptography exchanges a session key, symmetric cryptography carries the data (course slide)](/img/mtcse/se4-14.webp)
 
 IPsec and TLS use DH to create session keys. DH **groups** (modp2048, ecp256, ecp384...) choose the size and the type of the math.
 
@@ -70,6 +78,8 @@ A public key alone does not say **whose** key it is. An attacker could give you 
 - Clients keep a list of **trusted root CAs** (browsers and operating systems ship hundreds).
 - A certificate is trusted when its signature chain ends in a trusted root. Public CAs often use an **intermediate** CA in between, which is why you get a **ca_bundle** file with the certificate.
 
+![Components of a PKI: CA, VA, RA and the central directory (course slide)](/img/mtcse/se4-18.webp)
+
 **PKI** (Public Key Infrastructure) is the whole system: CAs, certificates, revocation and the rules around them.
 
 ### Revocation
@@ -87,6 +97,8 @@ If a private key is stolen, the certificate must be cancelled before it expires.
 ### Build your own CA, step by step
 
 **Step 1. Templates.** `add` only creates a template; nothing is signed yet.
+
+![Self-signed certificates: each router needs the CA certificate of the other side (course slide)](/img/mtcse/se4-34.webp)
 
     /certificate
     add name=ca common-name=ca key-usage=key-cert-sign,crl-sign days-valid=3650

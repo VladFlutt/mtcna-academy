@@ -10,6 +10,8 @@ A **bridge** joins several interfaces into one **Layer 2 broadcast domain**, lik
 
 On devices with a switch chip, bridge ports can be switched by hardware: the **H** flag in `/interface bridge port print`. Traffic between them does not use the CPU. Only one bridge per device can be hardware offloaded (on most switch chips).
 
+![Inside a device: ports connected to a switch chip and the CPU (course slide)](/img/mtcna/na5-25.webp)
+
 # Lesson: Creating a bridge
 
     /interface bridge add name=bridge-lan
@@ -18,11 +20,15 @@ On devices with a switch chip, bridge ports can be switched by hardware: the **H
     /interface bridge port add bridge=bridge-lan interface=wlan1
     /ip address add address=192.168.10.1/24 interface=bridge-lan
 
+![Adding ports to a bridge in Winbox (course slide)](/img/mtcna/na5-31.webp)
+
 > **Watch out:** if you are connected through ether2 by IP and move ether2 into a bridge, the IP address that was on ether2 stops working and you lose the connection. Use **MAC-Winbox** or **Safe Mode** when changing bridge ports.
 
 ### Wireless in a bridge
 
 An AP in **ap-bridge** mode can be put into the bridge so that wireless and wired clients share one network. A station in **station** mode **cannot** be bridged (802.11 only allows one MAC per station). For transparent bridging on the client side, use **station-bridge** (MikroTik-to-MikroTik), **station-pseudobridge** or **WDS**.
+
+![hAP ac2 sample: ether1 WAN, the other ports and both radios in bridgeLAN (course slide)](/img/mtcna/na5-26.webp)
 
 ### Course view: you decide what is WAN and LAN
 
@@ -31,6 +37,8 @@ After a reset to an **empty** configuration ("no defaults") all ports are indepe
 - **ether1 = WAN**: all WAN L2/L3 configuration goes on ether1.
 - **ether2-ether5 (+ wlan1) = bridgeLAN**: all LAN L2/L3 configuration goes on **bridgeLAN**.
 - Ports with the **S** (slave) flag get **no** L2/L3 configuration of their own (only L1: speed, duplex...).
+
+![hEX: ether1 is the WAN, ether2 to ether5 are in bridgeLAN (course slide)](/img/mtcna/na5-15.webp)
 
 The switch chip forwards frames between bridge ports at wire speed (**hardware offload**), otherwise the CPU does it. Look at the device **block diagram** (on mikrotik.com) to see which ports share a switch chip.
 

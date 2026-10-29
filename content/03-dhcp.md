@@ -9,6 +9,8 @@
 3. **Request**: the client requests the offered address.
 4. **Acknowledge**: the server confirms; the lease starts.
 
+![DORA: discover, offer, request, acknowledge](/img/mtctce/dhcp-dora.svg)
+
 The client renews the lease at half of the **lease time**.
 
 > A DHCP server only answers on the interface it is configured on. If the interface is a **bridge port**, the server must be on the **bridge**, not on the port.
@@ -18,6 +20,8 @@ The client renews the lease at half of the **lease time**.
 The DHCP client is used on the WAN side, typically on ether1:
 
     /ip dhcp-client add interface=ether1 disabled=no
+
+![A DHCP client on ether1 receives the address, the gateway and DNS from the ISP (course slide)](/img/mtcna/x1-38.webp)
 
 Important options:
 
@@ -49,6 +53,8 @@ And the interface itself must have an IP address in that network (192.168.88.1/2
 
     /ip dhcp-server lease add address=192.168.88.50 mac-address=AA:BB:CC:DD:EE:FF
 
+![IP > DHCP Server > Leases: D marks dynamic leases (course slide)](/img/mtcna/x1-52.webp)
+
 Lease **lease-time** default is 30 minutes in v7 (10 minutes in some v6 versions).
 
 ### DHCP and ARP
@@ -78,6 +84,10 @@ Questions to think about: is more than one DHCP server allowed in one broadcast 
 
 **ARP** maps IP addresses to MAC addresses. See it in **IP > ARP** (`/ip arp print`).
 
+![IP > ARP: the table of IP address, MAC address and interface (course slide)](/img/mtcna/x1-31.webp)
+
+![ARP mode reply-only on an interface: only static ARP entries can talk to the router (course slide)](/img/mtcna/x1-33.webp)
+
 Interface ARP modes:
 
 | Mode | Behaviour |
@@ -103,6 +113,8 @@ From the course:
 RouterOS has a caching DNS server:
 
     /ip dns set servers=8.8.8.8,1.1.1.1 allow-remote-requests=yes
+
+![IP > DNS: with allow-remote-requests the router answers DNS on UDP and TCP 53, so filter it from the WAN (course slide)](/img/mtcna/x1-11.webp)
 
 - **allow-remote-requests=yes** lets LAN clients use the router as DNS (give the router IP as DNS in DHCP).
 - If you enable it, **block** UDP/TCP 53 from the WAN in the firewall input chain, or the router becomes an open resolver.

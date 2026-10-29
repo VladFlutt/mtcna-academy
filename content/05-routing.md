@@ -2,6 +2,8 @@
 
 A router forwards packets between networks using its **routing table** (**IP > Routes**, `/ip route print`). For each packet, the router finds the route with the **most specific** matching destination (**longest prefix match**). If several routes have the same prefix, the one with the lowest **distance** wins.
 
+![How the router chooses a route: longest prefix first, then the smallest distance](/img/mtcre/route-selection.svg)
+
 ### Route flags
 
 | Flag | Meaning |
@@ -22,6 +24,8 @@ Every IP address added to a running interface creates a **connected route** (DAC
     /ip address add address=192.168.88.1/24 interface=bridge
     # creates: 192.168.88.0/24 dst via bridge, flags DAC
 
+![Lab addressing: laptop and bridgeLAN in 192.168.x.0/24, ether1 in the ISP network (course slide)](/img/mtcna/na5-54.webp)
+
 # Lesson: Static and default routes
 
 ### Default route
@@ -29,6 +33,8 @@ Every IP address added to a running interface creates a **connected route** (DAC
 `0.0.0.0/0` matches everything; it is the route to the Internet:
 
     /ip route add dst-address=0.0.0.0/0 gateway=10.0.0.1
+
+![Adding the default route in Winbox (course slide)](/img/mtcna/x1-08.webp)
 
 The DHCP client and PPPoE client can add the default route automatically (*Add Default Route*).
 
@@ -58,6 +64,8 @@ Routes: `10.0.0.0/8 via A`, `10.1.0.0/16 via B`, `10.1.1.0/24 via C`. A packet t
 ### Course lab chain (Labs 5.3 to 5.9)
 
 Topology: laptop **192.168.x.2/24** (gateway and DNS 192.168.x.1) connected to **bridgeLAN 192.168.x.1/24**; WAN ether1 **22.1.1.x/24**, ISP gateway and DNS **22.1.1.1**.
+
+![Static WAN: address, gateway and DNS set by hand (course slide)](/img/mtcna/x1-13.webp)
 
 1. **Lab 5.3**: on the laptop disable wireless and set IP 192.168.x.2, mask 255.255.255.0, gateway 192.168.x.1, DNS 192.168.x.1.
 2. **Lab 5.4**: connect with MAC-Winbox, add **192.168.x.1/24** on the bridge, reconnect by IP.

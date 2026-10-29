@@ -9,6 +9,7 @@ Interactive training platform for MikroTik certification courses. The academy ho
 - **Theory:** 10 modules and 46 lessons following the MTCNA syllabus (RouterOS intro, first steps, DHCP/ARP/DNS, bridging, routing, wireless, firewall and NAT, QoS, tunnels, tools).
 - **Hands-on labs:** a RouterOS CLI simulator in the browser (tab completion, history, `print`/`add`/`set`/`export`) with 13 guided labs that are checked automatically.
 - **Simulators:** subnet calculator, route lookup, firewall packet walk, burst and PCQ queues, Wi-Fi channels, RouterBOARD name decoder.
+- **Figures:** about 70 figures in the lessons: crops of the course slides (Winbox windows, topologies, charts) marked "(course slide)", plus SVG diagrams of the filter chains, srcnat, DHCP and the packet flow that follow the theme. Slide crops are in `img/mtcna/`.
 - **Quizzes:** 143 questions with explanations, 80% to pass each module.
 - **Final exam:** 25 random questions, 60 minutes, 60% to pass (same format as the real MTCNA exam).
 - **AI assistant** (`js/ai.js`, `api/tutor.mjs`):
@@ -29,6 +30,7 @@ Routes start with `#/mtcse` (data in `js/mtcse/`, lessons in `content/mtcse/` an
 - **Theory:** 7 modules and 32 lessons with step-by-step examples for beginners, following every MTCSE slide deck: security basics, threats and types of attack, router hardening, firewall in depth (packet flow, connection tracking, RAW), attacks and prevention (L2 attacks, scans, brute force, DoS), cryptography and certificates, securing the router (port knocking, service ports, SSH tunnels), IPsec (AH, ESP, transport and tunnel mode, IKE phases, site-to-site tunnels and the NAT bypass), secure tunnels for road warriors (L2TP/IPsec, SSTP, IKEv2).
 - **Hands-on labs:** 11 labs in the RouterOS simulator, checked automatically. The simulator now also covers `/ip firewall raw`, `/certificate` (sign, import, export), `/ip ipsec` (profile, proposal, peer, identity, mode-config, policy templates), `/ip ssh` and `/ip settings`, and replays timed packet sequences (port knocking, brute-force attempts) through RAW and filter with live address-list timeouts.
 - **Simulators:** port knocking, brute-force staging, crypto playground (SHA-256, AES-GCM, toy RSA), VPN handshake stepper, SSH tunnel builder, VPN firewall helper, plus the firewall packet walk.
+- **Figures:** about 30 figures: crops of the MTCSE slides marked "(course slide)" (attack diagrams, PKI, port knocking, SSH tunnels, IPsec modes and phases, SSTP stages) and an SVG of the four classes of attack, in `img/mtcse/`.
 - **Quizzes:** 126 questions at the level of the real exam, 18 per module, 80% to pass each module.
 - **Final exam:** 25 random questions, 60 minutes, 60% to pass.
 

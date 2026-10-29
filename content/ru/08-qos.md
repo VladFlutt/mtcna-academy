@@ -2,6 +2,8 @@
 
 **Очереди** ограничивают и приоритизируют трафик. Самый простой инструмент это **simple queue** (**Queues > Simple Queues**).
 
+![Простая очередь: target и max-limit (слайд курса)](/img/mtcna/na8-06.webp)
+
     /queue simple add name=laptop target=192.168.88.254/32 max-limit=1M/1M
 
 - **target**: чей трафик ограничивается: IP, подсеть, несколько адресов или **интерфейс**.
@@ -32,6 +34,8 @@
 # Lesson: Burst
 
 **Burst** позволяет клиенту ненадолго превысить max-limit: веб-страницы открываются быстро, а большие загрузки всё равно ограничены.
+
+![Burst: скорость поднимается до burst-limit, пока среднее остаётся ниже burst-threshold (слайд курса)](/img/mtcna/na8-19.webp)
 
 Параметры (для каждого направления):
 
@@ -69,6 +73,10 @@
 | 0 | 2 | 256k |
 | 0 | 8 | 64k |
 
+![pcq-rate=128000: каждый пользователь получает не больше 128k (слайд курса)](/img/mtcna/na8-36.webp)
+
+![pcq-rate=0: полоса делится поровну между активными пользователями (слайд курса)](/img/mtcna/na8-39.webp)
+
 Встроенные типы очередей: **default** (pfifo), **default-small**, **ethernet-default**, **wireless-default** (sfq), **synchronous-default** (red), **hotspot-default** (sfq), **pcq-download-default**, **pcq-upload-default**, **only-hardware-queue** и **multi-queue-ethernet-default**.
 
 > Попробуйте **Симулятор PCQ**.
@@ -94,6 +102,8 @@
     /queue simple add name=WEB_Limit target=192.168.33.0/24 packet-marks=web_packet \
         max-limit=2M/2M queue=pcq-upload-default/pcq-download-default
 
+![Метки соединений ставятся один раз; метки пакетов питают очереди](/img/mtctce/marks.svg)
+
 ### Лаба 9.2
 
 1. Ограничьте каждого пользователя LAN до 1M (PCQ).
@@ -105,3 +115,7 @@
 - **Torch** (**Tools > Torch**): трафик на интерфейсе в реальном времени, с фильтрами и группировкой по src/dst адресу, порту, протоколу, VLAN. Идеально, чтобы найти, «кто забирает мою полосу».
 - **Graphing** (**Tools > Graphing**): долговременные графики интерфейсов, очередей и ресурсов, просмотр в браузере по адресу **http://router-ip/graphs/**. Задайте *allow-address*, чтобы ограничить, кто может их смотреть.
 - **Bandwidth Test** (**Tools > Bandwidth Test**): измерение пропускной способности между двумя устройствами MikroTik (или с btest.exe для Windows) по TCP или UDP, send/receive/both. На дальнем конце должен быть включён **BTest server** (`/tool bandwidth-server`); он использует TCP 2000 и UDP 2001-2100+, максимум 100 сессий. Тест к самому маршрутизатору измеряет и его CPU: по возможности тестируйте **через** маршрутизатор.
+
+![Torch показывает текущий трафик на интерфейсе (слайд курса)](/img/mtcna/na8-11.webp)
+
+![Графики в браузере: http://router/graphs/ (слайд курса)](/img/mtcna/na8-45.webp)

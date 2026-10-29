@@ -111,6 +111,8 @@ RouterBOARD приходит не пустым. RouterOS применяет **к
 5. **Mangle input → filter input** (к самому маршрутизатору) или **mangle forward → filter forward** (через маршрутизатор).
 6. Для транзитных пакетов: **mangle postrouting**, **NAT srcnat**, затем наружу.
 
+![Путь пакета: prerouting, решение маршрутизации, input, forward или output, postrouting](/img/mtctce/packet-flow.svg)
+
 Пакет, **созданный самим маршрутизатором** (его ping, DNS-запрос, VPN-пакет), идёт так: **RAW output → connection tracking → mangle output → filter output → postrouting**.
 
 | Таблица | Цепочки | Типичное применение |
@@ -260,6 +262,8 @@ RouterBOARD приходит не пустым. RouterOS применяет **к
 ### Области безопасности
 
 **Область безопасности (security area)** это просто группа интерфейсов, которым вы доверяете одинаково. В RouterOS это **списки интерфейсов**, и на слайдах их два: красная область WAN и зелёная LAN.
+
+![Области безопасности: списки интерфейсов WAN и LAN (слайд курса)](/img/mtcse/se22-40.webp)
 
     /interface list
     add name=WAN

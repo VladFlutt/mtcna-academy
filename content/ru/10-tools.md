@@ -11,6 +11,10 @@
 | **IP Scan** | `/tool ip-scan` | Поиск хостов в сети |
 | **MAC Server / MAC Telnet** | `/tool mac-server` | Доступ к другим устройствам MikroTik по MAC |
 
+![Bandwidth test между двумя маршрутизаторами (слайд курса)](/img/mtcna/na8-23.webp)
+
+![Инструмент ping в Winbox (слайд курса)](/img/mtcna/x1-15.webp)
+
 # Lesson: Мониторинг и оповещения
 
 - **Netwatch** (`/tool netwatch`): пингует хост с заданным интервалом и запускает **up-script** или **down-script** при смене состояния. Пример: отправить e-mail, когда шлюз провайдера недоступен.
@@ -33,6 +37,8 @@
 - Для правильной даты и времени используйте **NTP/SNTP** или **IP > Cloud** (*Update Time*: как только маршрутизатор выходит в Интернет, облако устанавливает время; это включено даже в пустой конфигурации).
 - **NTP** (RFC 5905) использует **UDP 123**, модель клиент/сервер; RouterOS может быть и клиентом, и сервером.
 - **SNTP** (RFC 4330) это упрощённый NTP для устройств, которым не нужна высокая точность; SNTP-клиент может обращаться к любому NTP-серверу. В v6 меню **System > SNTP Client**, в v7 **System > NTP Client**.
+
+![NTP-клиент (слайд курса)](/img/mtcna/x5-06.webp)
 
     /system clock set time-zone-name=Europe/Riga
     /system ntp client set enabled=yes servers=pool.ntp.org

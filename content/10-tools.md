@@ -11,6 +11,10 @@
 | **IP Scan** | `/tool ip-scan` | Discover hosts in a network |
 | **MAC Server / MAC Telnet** | `/tool mac-server` | Access other MikroTik devices by MAC |
 
+![Bandwidth test between two routers (course slide)](/img/mtcna/na8-23.webp)
+
+![The ping tool in Winbox (course slide)](/img/mtcna/x1-15.webp)
+
 # Lesson: Monitoring and alerts
 
 - **Netwatch** (`/tool netwatch`): pings a host every interval and runs an **up-script** or **down-script** when its state changes. Example: send e-mail when the ISP gateway goes down.
@@ -33,6 +37,8 @@
 - To get the correct date and time use **NTP/SNTP** or **IP > Cloud** (*Update Time*: as soon as the router reaches the Internet, the cloud sets the time; it is enabled even in an empty configuration).
 - **NTP** (RFC 5905) uses **UDP 123**, client/server model; RouterOS can be a client and a server.
 - **SNTP** (RFC 4330) is a simplified NTP for devices that do not need high precision; an SNTP client can query any NTP server. In v6 the menu is **System > SNTP Client**, in v7 **System > NTP Client**.
+
+![The NTP client (course slide)](/img/mtcna/x5-06.webp)
 
     /system clock set time-zone-name=Europe/Riga
     /system ntp client set enabled=yes servers=pool.ntp.org
