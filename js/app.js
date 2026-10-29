@@ -17,6 +17,9 @@ import { RE_MODULES, RE_EXAM } from './mtcre/data.js'
 import { RE_LABS, RE_SANDBOX, RE_START_LABEL, makeLabNet } from './mtcre/labs.js'
 import { RE_SIMS } from './mtcre/sims.js'
 import { topoSvg, linksPanel, reachPanel } from './mtcre/ui.js'
+import { TCE_MODULES, TCE_EXAM } from './mtctce/data.js'
+import { TCE_LABS, TCE_START_LABEL, tceTerminalStart } from './mtctce/labs.js'
+import { TCE_SIMS } from './mtctce/sims.js'
 
 const APP = T('Academy MikroTik', 'Академия MikroTik')
 
@@ -42,8 +45,11 @@ if (LANG === 'ru') {
 const NA = { id: 'mtcna', code: 'MTCNA', base: '', home: '#/mtcna', modules: MODULES, labs: LABS, sims: SIMS, exam: EXAM, examKey: 'exams', modsKey: 'examMods', trouble: true }
 const SE = { id: 'mtcse', code: 'MTCSE', base: '/mtcse', home: '#/mtcse', modules: SE_MODULES, labs: SE_LABS, sims: [...SE_SIMS, SIMS.find((x) => x.id === 'firewall')], exam: SE_EXAM, examKey: 'exams_mtcse', modsKey: 'examMods_mtcse', trouble: false, startLabel: START_LABEL }
 const RE = { id: 'mtcre', code: 'MTCRE', base: '/mtcre', home: '#/mtcre', modules: RE_MODULES, labs: RE_LABS, sims: RE_SIMS, exam: RE_EXAM, examKey: 'exams_mtcre', modsKey: 'examMods_mtcre', trouble: false, startLabel: RE_START_LABEL(), net: true }
-const COURSE_DATA = { mtcna: NA, mtcse: SE, mtcre: RE }
-const ALL_SIMS = [...SIMS, ...SE_SIMS, ...RE_SIMS]
+const TCE = { id: 'mtctce', code: 'MTCTCE', base: '/mtctce', home: '#/mtctce', modules: TCE_MODULES, labs: TCE_LABS, sims: [...TCE_SIMS, ...['burst', 'pcq', 'firewall'].map((id) => SIMS.find((x) => x.id === id))], exam: TCE_EXAM, examKey: 'exams_mtctce', modsKey: 'examMods_mtctce', trouble: false, startLabel: TCE_START_LABEL,
+  termStart: tceTerminalStart, tries: ['/ip dns static print', '/ip dns cache print', '/ip dhcp-server option print', '/ip proxy access print', '/ip firewall mangle print', '/queue type print', '/queue tree print', '/export'],
+  termText: T('A router that is already online (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24 with a DHCP server, laptop on ether2) with a basic stateful firewall. Try the traffic control menus: DNS static and cache, DHCP options and relay, web proxy, mangle, queue types, simple queues and the queue tree.', 'Маршрутизатор уже в сети (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24 с DHCP-сервером, ноутбук на ether2) с базовым stateful-файрволом. Попробуйте меню управления трафиком: статический DNS и кэш, опции DHCP и relay, веб-прокси, mangle, типы очередей, простые очереди и дерево очередей.') }
+const COURSE_DATA = { mtcna: NA, mtcse: SE, mtcre: RE, mtctce: TCE }
+const ALL_SIMS = [...SIMS, ...SE_SIMS, ...RE_SIMS, ...TCE_SIMS]
 const href = (c, p) => '#' + c.base + p
 let CUR = NA
 
@@ -106,7 +112,7 @@ function moduleProgress(mod, count) {
 const COURSE_KEYS = ['home', 'labs', 'terminal', 'trouble', 'sims', 'exam', 'cheat']
 function shell(active, inner, c = CUR) {
   const inCourse = COURSE_KEYS.includes(active)
-  const top = [['#/', T('Courses', 'Курсы'), active === 'academy' || active === 'course'], ['#/mtcna', 'MTCNA', inCourse && c === NA], ['#/mtcse', 'MTCSE', inCourse && c === SE], ['#/mtcre', 'MTCRE', inCourse && c === RE], ['#/glossary', T('Glossary', 'Словарь'), active === 'glossary']]
+  const top = [['#/', T('Courses', 'Курсы'), active === 'academy' || active === 'course'], ['#/mtcna', 'MTCNA', inCourse && c === NA], ['#/mtcse', 'MTCSE', inCourse && c === SE], ['#/mtcre', 'MTCRE', inCourse && c === RE], ['#/mtctce', 'MTCTCE', inCourse && c === TCE], ['#/glossary', T('Glossary', 'Словарь'), active === 'glossary']]
   const sub = [[c.home, T('Course', 'Курс'), 'home'], [href(c, '/labs'), T('Labs', 'Лабы'), 'labs'], [href(c, '/terminal'), T('Terminal', 'Терминал'), 'terminal'], ...(c.trouble ? [['#/troubleshoot', T('Troubleshoot', 'Неисправности'), 'trouble']] : []), [href(c, '/sims'), T('Simulators', 'Симуляторы'), 'sims'], [href(c, '/exam'), T('Final exam', 'Экзамен'), 'exam'], [href(c, '/cheatsheet'), T('Cheat sheet', 'Шпаргалка'), 'cheat']]
   document.title = inCourse ? `${c.code} · ${APP}` : active === 'glossary' ? `${T('Glossary', 'Словарь')} · ${APP}` : APP
   return `
@@ -193,7 +199,7 @@ function troublePage() {
 // ---------- academy ----------
 async function academyPage() {
   const stats = {}
-  for (const cd of [NA, SE, RE]) {
+  for (const cd of [NA, SE, RE, TCE]) {
     const counts = await lessonCounts(cd)
     stats[cd.id] = { total: counts.reduce((a, b) => a + b, 0), pct: Math.round(cd.modules.reduce((a, m, i) => a + moduleProgress(m, counts[i]), 0) / cd.modules.length) }
   }
@@ -218,6 +224,7 @@ async function academyPage() {
       <div><b>${bestExam ? bestExam + '%' : '–'}</b><span>${T('best MTCNA exam', 'лучший экзамен MTCNA')}</span></div>
       <div><b>${stats.mtcse.pct}%</b><span>${T('of MTCSE done', 'MTCSE пройдено')}</span></div>
       <div><b>${stats.mtcre.pct}%</b><span>${T('of MTCRE done', 'MTCRE пройдено')}</span></div>
+      <div><b>${stats.mtctce.pct}%</b><span>${T('of MTCTCE done', 'MTCTCE пройдено')}</span></div>
       <div><b>${GLOSSARY.length}</b><span>${T('terms in the glossary', 'терминов в словаре')}</span></div>
     </div>
   </section>
@@ -283,6 +290,7 @@ const HERO = {
   mtcna: () => ({ title: T('Learn MTCNA by doing', 'Изучайте MTCNA на практике'), text: T('Ten modules that follow the official MikroTik Certified Network Associate outline: theory from the course slides and help.mikrotik.com, a RouterOS terminal with guided labs, network simulators, a quiz for every module, and a timed final exam.', 'Десять модулей по официальной программе MikroTik Certified Network Associate: теория из слайдов курса и help.mikrotik.com, терминал RouterOS с лабораторными работами, сетевые симуляторы, тест к каждому модулю и финальный экзамен на время.'), first: 'intro', name: 'MTCNA' }),
   mtcse: () => ({ title: T('MTCSE: secure your MikroTik', 'MTCSE: защитите свой MikroTik'), text: T('Seven modules that follow the official MikroTik Certified Security Engineer outline and the whole set of course slides (Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels), with the RouterOS details filled in from help.mikrotik.com. Every term is explained for beginners, every lab is checked by replaying real attacks against your configuration, and the quizzes and exam keep the difficulty of the real test. MTCNA knowledge is assumed.', 'Семь модулей по официальной программе MikroTik Certified Security Engineer и по всему набору слайдов курса (Basic Concepts, Security Basic Firewall, Attacks, Cryptography and PKI, Security Router, IPsec, Secure Tunnels), с деталями RouterOS по help.mikrotik.com. Каждый термин объяснён для начинающих, каждая лаба проверяется воспроизведением настоящих атак против вашей конфигурации, а тесты и экзамен сохраняют сложность настоящего теста. Предполагаются знания MTCNA.'), first: 'se-intro', name: 'MTCSE' }),
   mtcre: () => ({ title: T('MTCRE: route like an engineer', 'MTCRE: маршрутизация как у инженера'), text: T('Six modules that follow the official MikroTik Certified Routing Engineer outline and the course slides (static routing, tunnels, OSPF theory and OSPF configuration), checked against help.mikrotik.com and taught for RouterOS 7, with the RouterOS 6 commands as side notes. The labs are real networks: several simulated routers with a terminal each, links you can cut or silently break, and checks that follow every packet hop by hop. MTCNA knowledge is assumed.', 'Шесть модулей по официальной программе MikroTik Certified Routing Engineer и по слайдам курса (статическая маршрутизация, туннели, теория OSPF и настройка OSPF), сверенные с help.mikrotik.com и написанные для RouterOS 7, с командами RouterOS 6 в примечаниях. Лабы это настоящие сети: несколько симулированных маршрутизаторов с отдельным терминалом, каналы, которые можно отключить или тихо сломать, и проверки, которые проходят путь каждого пакета по хопам. Предполагаются знания MTCNA.'), first: 're-basics', name: 'MTCRE' }),
+  mtctce: () => ({ title: T('MTCTCE: control every packet', 'MTCTCE: управляйте каждым пакетом'), text: T('Seven modules that follow the official MikroTik Certified Traffic Control Engineer outline and both parts of the course slides: DNS and DHCP in depth, the web proxy, the packet flow of RouterOS 6 and 7, firewall and attacks, NAT and mangle, and QoS with HTB, queue trees and PCQ. The labs run on a simulated RouterOS router and are checked by behaviour: real DNS answers, DHCP options as the client decodes them, packets walked through every chain, and the bandwidth HTB really gives each queue. MTCNA knowledge is assumed.', 'Семь модулей по официальной программе MikroTik Certified Traffic Control Engineer и по обеим частям слайдов курса: DNS и DHCP углублённо, веб-прокси, путь пакета в RouterOS 6 и 7, файрвол и атаки, NAT и mangle, QoS с HTB, деревьями очередей и PCQ. Лабы выполняются на симулированном маршрутизаторе RouterOS и проверяются по поведению: настоящие ответы DNS, опции DHCP так, как их раскодирует клиент, пакеты, прошедшие через все цепочки, и полоса, которую HTB на самом деле даёт каждой очереди. Предполагаются знания MTCNA.'), first: 'tce-dns', name: 'MTCTCE' }),
 }
 
 async function homePage(c = CUR) {
@@ -538,19 +546,19 @@ function bindCopy(scope) {
 function terminalPage(c = CUR) {
   if (c.net) return netWorkbench(c, RE_SANDBOX, true)
   const se = c === SE
-  const start = se ? seTerminalStart : defaultConfig
-  const tries = se ? ['/ip firewall filter print', '/ip firewall raw print', '/ip service print', '/ip ssh print', '/certificate print', '/ip ipsec peer print', '/ip settings print', '/export'] : ['/interface print', '/ip address print', '/ip route print', '/ip firewall filter print', '/ping mikrotik.com count=3', '/system reset-configuration no-defaults=yes', '/export']
+  const start = c.termStart || (se ? seTerminalStart : defaultConfig)
+  const tries = c.tries || (se ? ['/ip firewall filter print', '/ip firewall raw print', '/ip service print', '/ip ssh print', '/certificate print', '/ip ipsec peer print', '/ip settings print', '/export'] : ['/interface print', '/ip address print', '/ip route print', '/ip firewall filter print', '/ping mikrotik.com count=3', '/system reset-configuration no-defaults=yes', '/export'])
   const html = shell('terminal', `
   <div class="lab">
     <section class="lab-main"><div id="term"></div></section>
     <aside class="lab-side card">
       <h3>${T('Free practice', 'Свободная практика')}</h3>
-      <p class="muted">${se ? T('A router that is already online (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, laptop on ether2) with a strict stateful firewall. Try the security menus: RAW, address lists, services, SSH, certificates and IPsec. Use the AI tutor\'s audit to score your hardening.', 'Маршрутизатор уже в сети (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, ноутбук на ether2) со строгим stateful-файрволом. Попробуйте меню безопасности: RAW, address lists, сервисы, SSH, сертификаты и IPsec. Аудит ИИ-тьютора оценит вашу защиту.') : T('A hAP-style router with the MikroTik <b>default configuration</b>. ether1 is cabled to the ISP (DHCP, PPPoE user class/class, gateway 22.1.1.1), ether2 to a laptop.', 'Маршрутизатор типа hAP с <b>конфигурацией MikroTik по умолчанию</b>. ether1 подключён к провайдеру (DHCP, PPPoE пользователь class/class, шлюз 22.1.1.1), ether2 к ноутбуку.')}</p>
+      <p class="muted">${c.termText || (se ? T('A router that is already online (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, laptop on ether2) with a strict stateful firewall. Try the security menus: RAW, address lists, services, SSH, certificates and IPsec. Use the AI tutor\'s audit to score your hardening.', 'Маршрутизатор уже в сети (WAN ether1 22.1.1.33/24, LAN bridgeLAN 192.168.33.1/24, ноутбук на ether2) со строгим stateful-файрволом. Попробуйте меню безопасности: RAW, address lists, сервисы, SSH, сертификаты и IPsec. Аудит ИИ-тьютора оценит вашу защиту.') : T('A hAP-style router with the MikroTik <b>default configuration</b>. ether1 is cabled to the ISP (DHCP, PPPoE user class/class, gateway 22.1.1.1), ether2 to a laptop.', 'Маршрутизатор типа hAP с <b>конфигурацией MikroTik по умолчанию</b>. ether1 подключён к провайдеру (DHCP, PPPoE пользователь class/class, шлюз 22.1.1.1), ether2 к ноутбуку.'))}</p>
       <div id="lp"></div>
       ${tutorPanel()}
       <h4>${T('Try', 'Попробуйте')}</h4>
       <div class="tries">${tries.map((x) => `<button class="chip mono" data-c="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-      <button class="btn ghost" id="t-reset">${se ? T('Reset the router', 'Сбросить маршрутизатор') : T('Reset to default config', 'Сбросить к конфигурации по умолчанию')}</button>
+      <button class="btn ghost" id="t-reset">${se || c.termStart ? T('Reset the router', 'Сбросить маршрутизатор') : T('Reset to default config', 'Сбросить к конфигурации по умолчанию')}</button>
     </aside>
   </div>`)
   return { html, after: () => {
@@ -675,6 +683,7 @@ function labPage(id, c = CUR) {
     <aside class="lab-side card">
       <h3>${T('Tasks', 'Задания')} <span id="lab-count" class="score"></span></h3>
       <ol class="tasks" id="tasks"></ol>
+      <div id="lpx"></div>
       <div id="lp"></div>
       ${tutorPanel()}
       <div class="row wrap"><button class="btn ghost" id="l-reset">${T('Restart lab', 'Начать заново')}</button><button class="btn ghost" id="l-sol">${T('Show all hints', 'Показать все подсказки')}</button></div>
@@ -690,6 +699,7 @@ function labPage(id, c = CUR) {
       document.getElementById('lab-count').className = 'score' + (n === pr.length ? ' good' : '')
       document.getElementById('tasks').innerHTML = lab.tasks.map((t, i) => `<li class="${pr[i] ? 'done' : ''}"><span class="tick">${pr[i] ? '✓' : i + 1}</span><div>${esc(t.t)}<button class="link hint" data-h="${i}">${open.has(i) ? T('hide hint', 'скрыть подсказку') : T('hint', 'подсказка')}</button>${open.has(i) ? `<pre class="code sm"><code>${esc(t.h)}</code></pre>` : ''}</div></li>`).join('')
       document.getElementById('lp').innerHTML = laptopPanel(ros.st)
+      if (lab.panel) { try { document.getElementById('lpx').innerHTML = lab.panel(ros.st) } catch { document.getElementById('lpx').innerHTML = '' } }
       if (n === pr.length && !store.data.labs[lab.id]) { store.data.labs[lab.id] = true; store.save(); t.write(T('\n*** Lab complete! All tasks pass. ***\n', '\n*** Лаба пройдена! Все задания выполнены. ***\n'), 'good') }
     }
     let t = mountTerminal(document.getElementById('term'), ros, upd)
@@ -720,7 +730,9 @@ async function examPage(c = CUR) {
   const EXAM = c.exam, MODULES = c.modules
   const html = shell('exam', `<div id="exam"><h1>${T('Final exam', 'Финальный экзамен')} ${c.code}</h1>
     <div class="card exam-intro">
-      ${c === RE ? T(`<p>The real MTCRE exam is taken online in English at the end of the course: <b>${EXAM.questions} questions</b> with one or several correct answers, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>; with 50-59% the trainer may allow a second attempt. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} MTCRE questions, at least two from every module.</p>
+      ${c === TCE ? T(`<p>The real MTCTCE exam is an online test in English at the end of the course, with a time limit and a pass mark set by MikroTik (check the current rules with your trainer). This practice exam draws <b>${EXAM.questions} random questions</b> from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} MTCTCE questions, at least two from every module: <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>.</p>
+      <ul><li>You can move between questions and change answers until you submit.</li><li>The exam submits itself when time runs out.</li><li>After submitting you see every answer with an explanation and a score per module.</li></ul>`, `<p>Настоящий экзамен MTCTCE это онлайн-тест на английском в конце курса, с ограничением времени и проходным баллом, которые задаёт MikroTik (актуальные правила уточните у тренера). Этот пробный экзамен выбирает <b>${EXAM.questions} случайных вопросов</b> из всех ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} вопросов MTCTCE, минимум два из каждого модуля: <b>${EXAM.minutes} минут</b>, проходной балл <b>${EXAM.pass}%</b>.</p>
+      <ul><li>Можно переходить между вопросами и менять ответы до отправки.</li><li>Когда время закончится, экзамен отправится сам.</li><li>После отправки вы увидите все ответы с объяснениями и результат по каждому модулю.</li><li>Совет: переключите язык на EN, чтобы потренироваться на английских формулировках, как на настоящем экзамене.</li></ul>`) : c === RE ? T(`<p>The real MTCRE exam is taken online in English at the end of the course: <b>${EXAM.questions} questions</b> with one or several correct answers, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>; with 50-59% the trainer may allow a second attempt. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} MTCRE questions, at least two from every module.</p>
       <ul><li>You can move between questions and change answers until you submit.</li><li>The exam submits itself when time runs out.</li><li>After submitting you see every answer with an explanation and a score per module.</li></ul>`, `<p>Настоящий экзамен MTCRE сдаётся онлайн на английском в конце курса: <b>${EXAM.questions} вопросов</b> с одним или несколькими правильными ответами, <b>${EXAM.minutes} минут</b>, проходной балл <b>${EXAM.pass}%</b>; при 50-59% тренер может разрешить вторую попытку. Этот пробный экзамен выбирает ${EXAM.questions} случайных вопросов из всех ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} вопросов MTCRE, минимум по два из каждого модуля.</p>
       <ul><li>Можно переходить между вопросами и менять ответы до отправки.</li><li>Когда время закончится, экзамен отправится сам.</li><li>После отправки вы увидите все ответы с объяснениями и результат по каждому модулю.</li><li>Совет: переключите язык на EN, чтобы потренироваться на английских формулировках, как на настоящем экзамене.</li></ul>`) : c === SE ? T(`<p>The real MTCSE exam is taken online in English at the end of the course: <b>${EXAM.questions} single or multiple choice questions</b>, <b>${EXAM.minutes} minutes</b>, pass mark <b>${EXAM.pass}%</b>; with 50-59% the trainer may allow a second attempt. This practice exam draws ${EXAM.questions} random questions from all ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} MTCSE questions, at least two from every module.</p>
       <ul><li>You can move between questions and change answers until you submit.</li><li>The exam submits itself when time runs out.</li><li>After submitting you see every answer with an explanation and a score per module.</li></ul>`, `<p>Настоящий экзамен MTCSE сдаётся онлайн на английском в конце курса: <b>${EXAM.questions} вопросов с одним или несколькими ответами</b>, <b>${EXAM.minutes} минут</b>, проходной балл <b>${EXAM.pass}%</b>; при 50-59% тренер может разрешить вторую попытку. Этот пробный экзамен выбирает ${EXAM.questions} случайных вопросов из всех ${MODULES.reduce((a, m) => a + m.quiz.length, 0)} вопросов MTCSE, минимум по два из каждого модуля.</p>
@@ -851,9 +863,38 @@ function reCheatPage() {
   </div>`)
 }
 
+function tceCheatPage() {
+  const tbl = (rows) => `<table><tbody>${rows.map(([a, b]) => `<tr><td class="mono">${a}</td><td>${b}</td></tr>`).join('')}</tbody></table>`
+  return shell('cheat', `<h1>${T('MTCTCE cheat sheet', 'Шпаргалка MTCTCE')}</h1><div class="cheat">
+  <div class="card"><h3>${T('Packet flow (forward)', 'Путь пакета (forward)')}</h3><ol class="sm"><li>prerouting: raw, conntrack, mangle, dstnat</li><li>${T('routing decision, TTL − 1', 'решение маршрутизации, TTL − 1')}</li><li>forward: mangle, filter</li><li>postrouting: mangle, srcnat</li><li>${T('queues: global and simple, then interface HTB', 'очереди: global и простые, затем HTB интерфейса')}</li></ol>
+    <p class="sm">${T('To the router: … dstnat, routing, mangle input, filter input. From the router: routing, raw output, mangle output, filter output, routing adjustment, postrouting. FastTrack skips mangle, filter, NAT and queues.', 'К маршрутизатору: … dstnat, маршрутизация, mangle input, filter input. От маршрутизатора: маршрутизация, raw output, mangle output, filter output, routing adjustment, postrouting. FastTrack обходит mangle, filter, NAT и очереди.')}</p></div>
+  <div class="card"><h3>DNS</h3>${tbl([['allow-remote-requests', T('answer clients (protect udp/tcp 53 from the WAN)', 'отвечать клиентам (закрыть udp/tcp 53 от WAN)')], ['static', T('A, AAAA, CNAME, FWD, NXDOMAIN, TXT…; first match wins', 'A, AAAA, CNAME, FWD, NXDOMAIN, TXT…; первое совпадение')], ['regexp', T('regular expression instead of name', 'регулярное выражение вместо имени')], ['cache', T('answers keep their TTL (max cache-max-ttl)', 'ответы хранятся по TTL (не больше cache-max-ttl)')]])}
+    <pre class="code sm"><code>/ip firewall nat add chain=dstnat \
+  in-interface=bridgeLAN protocol=udp \
+  dst-port=53 action=redirect to-ports=53</code></pre></div>
+  <div class="card"><h3>DHCP</h3>${tbl([['DORA', 'Discover → Offer → Request → Ack (udp 68 → 67)'], ['T1 / T2', T('renew at 50%, rebind at 87.5% of the lease', 'renew на 50%, rebind на 87,5% аренды')], ['3 / 6 / 15 / 42', 'router / dns / domain / ntp'], ['121', T('classless routes: len, octets, gateway; replaces option 3', 'бесклассовые маршруты: длина, октеты, шлюз; заменяет опцию 3')], ['82', 'relay agent information'], ['delay-threshold', T('answer only if the client has waited this long', 'отвечать, только если клиент ждёт столько')], ['authoritative', T('NAK unknown leases (yes, after-2sec-delay…)', 'NAK на чужие аренды (yes, after-2sec-delay…)')]])}</div>
+  <div class="card"><h3>${T('Web proxy', 'Веб-прокси')}</h3><pre class="code sm"><code>/ip proxy set enabled=yes port=8080
+/ip firewall nat add chain=dstnat \
+  in-interface=bridgeLAN protocol=tcp \
+  dst-port=80 action=redirect to-ports=8080
+/ip proxy access add dst-host=:torrent action=deny</code></pre><p class="sm">${T('* any characters, ? one character, a leading : makes it a regex. Never leave the proxy open on the WAN. HTTPS cannot be filtered by path.', '* любые символы, ? один символ, двоеточие в начале делает regex. Никогда не оставляйте прокси открытым на WAN. HTTPS нельзя фильтровать по пути.')}</p></div>
+  <div class="card"><h3>${T('Marks', 'Метки')}</h3><pre class="code sm"><code>/ip firewall mangle add chain=prerouting \
+  connection-state=new src-address=192.168.33.50 \
+  action=mark-connection new-connection-mark=voip
+/ip firewall mangle add chain=prerouting \
+  connection-mark=voip action=mark-packet \
+  new-packet-mark=voip passthrough=no</code></pre><p class="sm">${T('One packet mark, one connection mark and one routing mark per packet. Mark the connection once, then packets by connection mark.', 'У пакета одна метка пакета, одна метка соединения и одна метка маршрутизации. Маркируйте соединение один раз, затем пакеты по метке соединения.')}</p></div>
+  <div class="card"><h3>QoS</h3>${tbl([['limit-at (CIR)', T('guaranteed rate', 'гарантированная скорость')], ['max-limit (MIR)', T('maximum if the parent has spare', 'максимум, если у родителя есть запас')], ['priority', T('1 high … 8 low; leaves only', '1 высокий … 8 низкий; только листья')], ['Σ CIR children', '≤ CIR parent'], ['MIR child', '≤ MIR parent'], ['PCQ', T('rate 0: max-limit / users; else min(rate, max-limit / users)', 'rate 0: max-limit / пользователи; иначе min(rate, max-limit / пользователи)')], ['burst', T('allowed while the average over burst-time < burst-threshold', 'разрешён, пока среднее за burst-time < burst-threshold')]])}
+    <p class="sm">${T('Download: queue on the LAN interface or global; upload: on the WAN interface. Queue types: pfifo/bfifo, red, sfq, pcq; v7 adds fq-codel, codel, cake.', 'Загрузка: очередь на LAN-интерфейсе или global; отдача: на WAN-интерфейсе. Типы очередей: pfifo/bfifo, red, sfq, pcq; v7 добавляет fq-codel, codel, cake.')}</p></div>
+  <div class="card"><h3>DSCP</h3>${tbl([['EF', '46 (0xB8 TOS) VoIP RTP'], ['AF31', '26 (0x68 TOS) ' + T('signalling', 'сигнализация')], ['CS0', '0 best effort'], ['TOS → DSCP', 'TOS >> 2']])}
+    <h3>ICMP</h3>${tbl([['0:0 / 8:0', 'echo reply / request'], ['3:3 / 3:4', T('port unreachable / fragmentation needed', 'port unreachable / fragmentation needed')], ['11:0', 'TTL exceeded (traceroute)']])}</div>
+  </div>`)
+}
+
 function cheatPage() {
   if (CUR === SE) return seCheatPage()
   if (CUR === RE) return reCheatPage()
+  if (CUR === TCE) return tceCheatPage()
   return shell('cheat', `<h1>${T('Cheat sheet', 'Шпаргалка')}</h1><div class="cheat">
   <div class="card"><h3>${T('Default ports', 'Порты по умолчанию')}</h3><table><tbody>${[['FTP', '21'], ['SSH', '22'], ['Telnet', '23'], ['DNS', '53 udp/tcp'], ['DHCP', '67/68 udp'], ['HTTP / WebFig', '80'], ['NTP', '123 udp'], ['SNMP', '161 udp'], ['HTTPS', '443'], ['MNDP', '5678 udp'], ['PPTP', '1723 tcp + GRE (47)'], ['L2TP', '1701 udp'], ['IPsec', '500, 4500 udp + ESP'], ['SSTP', '443 tcp'], ['OpenVPN', '1194'], [T('Bandwidth test', 'Bandwidth test'), '2000 tcp'], ['API / API-SSL', '8728 / 8729'], ['Winbox', '8291']].map(([a, b]) => `<tr><td>${a}</td><td class="mono">${b}</td></tr>`).join('')}</tbody></table></div>
   <div class="card"><h3>${T('CLI keys', 'Клавиши CLI')}</h3><table><tbody>${[['Tab / Tab Tab', T('complete / list', 'дополнить / список')], ['? (v6) / F1 (v7)', T('help', 'справка')], ['Ctrl+X', 'Safe Mode'], ['Ctrl+C', T('interrupt', 'прервать')], ['Ctrl+D', T('logout', 'выход')], ['Ctrl+K', T('delete to end of line', 'удалить до конца строки')], ['Ctrl+L / F5', T('clear screen', 'очистить экран')], ['Ctrl+V', 'hotlock'], ['..  /  /', T('up one level / root', 'на уровень выше / в корень')]].map(([a, b]) => `<tr><td class="mono">${a}</td><td>${b}</td></tr>`).join('')}</tbody></table></div>
